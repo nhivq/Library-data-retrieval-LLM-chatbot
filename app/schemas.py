@@ -23,19 +23,3 @@ class BookResponse(BaseModel):
     publish_date: date | None = None
     rating: float | None = None
     authors: list[str] = []
-
-
-class BookDetailResponse(BookResponse):
-
-    authors: list[str]
-
-
-class BookmarkResponse(BookResponse):
-    pass
-
-
-class AuthorResponse(BaseModel):
-
-    author_key: str
-    author_name: str
-    books: list[str]
