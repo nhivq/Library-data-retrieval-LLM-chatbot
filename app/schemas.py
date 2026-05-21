@@ -12,6 +12,16 @@ class Bookmark(BaseModel):
     user_id: int
     work_key: str
 
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 
 # ---------- Response Models ( how API sends data ) ----------
 
