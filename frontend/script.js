@@ -1,57 +1,49 @@
 async function searchBooks(){
 
-    let query =
+    let query=
         document.getElementById("query").value;
 
-    let author =
+    let author=
         document.getElementById("author").value;
 
-    let rating =
+    let rating=
         document.getElementById("rating").value;
 
-
-    let url =
-`http://localhost:8000/books/search?q=${query}&author=${author}&min_rating=${rating}`;
-
-
-    try{
-
-        let response = await fetch(url);
-
-        let books = await response.json();
-
-        let resultsDiv =
-            document.getElementById("results");
-
-        resultsDiv.innerHTML="";
+    let tag=
+        document.getElementById("tag").value;
 
 
-        books.forEach(book=>{
+    let url=
+`http://localhost:8000/books/search?q=${query}&author=${author}&min_rating=${rating}&tag=${tag}`;
 
-            resultsDiv.innerHTML += `
 
-            <div>
+    let response=
+        await fetch(url);
 
-                <h3>${book.title}</h3>
+    let books=
+        await response.json();
 
-                <p>
-                Rating: ${book.rating}
-                </p>
+    let resultsDiv=
+        document.getElementById("results");
 
-            </div>
+    resultsDiv.innerHTML="";
 
-            <hr>
 
-            `;
+    books.forEach(book=>{
 
-        });
+        resultsDiv.innerHTML +=
+        `
+        <div>
 
-    }
+            <h3>${book.title}</h3>
 
-    catch(error){
+            <p>Rating: ${book.rating}</p>
 
-        console.log(error);
+        </div>
 
-    }
+        <hr>
+        `;
+
+    });
 
 }

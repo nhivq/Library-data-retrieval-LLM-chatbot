@@ -1,95 +1,102 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Book Search</title>
+
+    <style>
+
+        .container{
+            display:flex;
+        }
+
+        .filters{
+            width:200px;
+            padding:10px;
+            border-right:1px solid black;
+        }
+
+        .content{
+            padding:10px;
+            margin-left:20px;
+        }
+
+    </style>
+
 </head>
 
 <body>
 
-<h2>Search Books</h2>
+<div class="container">
 
-<input
-    type="text"
-    id="query"
-    placeholder="Search..."
->
+    <!-- Filter section -->
 
-<button onclick="searchBooks()">
-    Search
-</button>
+    <div class="filters">
 
-<br><br>
+        <h3>Filters</h3>
 
-<div id="results"></div>
+        <label>Author</label>
 
+        <br>
 
-<script>
+        <input
+            type="text"
+            id="author"
+        >
 
-const API_URL="http://localhost:8000";
+        <br><br>
 
+        <label>Minimum Rating</label>
 
-async function searchBooks(){
+        <br>
 
-    let query=
-        document.getElementById(
-            "query"
-        ).value;
+        <input
+            type="number"
+            id="rating"
+            min="0"
+            max="5"
+        >
 
+        <br><br>
 
-    try{
+        <label>Genre/Tag</label>
 
-        let response=await fetch(
-            `${API_URL}/books/search?q=${query}`
-        );
+        <br>
 
-        let books=
-            await response.json();
+        <input
+            type="text"
+            id="tag"
+        >
 
-
-        let results=
-            document.getElementById(
-                "results"
-            );
-
-        results.innerHTML="";
+    </div>
 
 
-        books.forEach(book=>{
+    <!-- Search section -->
 
-            results.innerHTML+=`
+    <div class="content">
 
-            <div>
+        <h2>Book Search</h2>
 
-            <h3>
-            ${book.title}
-            </h3>
+        <input
+            type="text"
+            id="query"
+            placeholder="Search books..."
+        >
 
-            <p>
-            Rating:
-            ${book.rating}
-            </p>
+        <button onclick="searchBooks()">
 
-            </div>
+            Search
 
-            <hr>
+        </button>
 
-            `;
+        <br><br>
 
-        });
+        <div id="results"></div>
 
-    }
+    </div>
 
-    catch(error){
+</div>
 
-        console.log(error);
-
-    }
-
-}
-
-</script>
+<script src="script.js"></script>
 
 </body>
-
 </html>
