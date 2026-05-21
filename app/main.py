@@ -5,6 +5,7 @@ from fastapi import (
     Depends
 )
 from psycopg2.extras import RealDictCursor
+from fastapi.middleware.cors import CORSMiddleware
 from .database import get_connection
 from .schemas import (
     Bookmark,
@@ -14,6 +15,19 @@ from .schemas import (
 )
 
 app = FastAPI()
+
+# Fix CORS issue
+app.add_middleware(
+    CORSMiddleware,
+
+    allow_origins=["*"],
+
+    allow_credentials=True,
+
+    allow_methods=["*"],
+
+    allow_headers=["*"]
+)
 
 # ---------- Database Dependency ----------
 # -> Avoid conn.close() to be repeated inside every endpoint.
@@ -56,15 +70,19 @@ def register(user: RegisterRequest,
 
         conn.commit()
 
-        return {"message":"User registered"}
+        return {
+            "message":"User registered"
+        }
 
-    except Exception:
+    except Exception as e:
 
         conn.rollback()
 
+        print(e)
+
         raise HTTPException(
             status_code=400,
-            detail="Could not register user"
+            detail=str(e)
         )
 
     finally:
