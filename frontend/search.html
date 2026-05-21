@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Book Search</title>
 </head>
 
 <body>
 
-<h2>Book Search</h2>
+<h2>Search Books</h2>
 
 <input
     type="text"
     id="query"
-    placeholder="Search books..."
+    placeholder="Search..."
 >
 
 <button onclick="searchBooks()">
@@ -20,19 +21,75 @@
 
 <br><br>
 
-<label>Author:</label>
-<input type="text" id="author">
-
-<br><br>
-
-<label>Minimum Rating:</label>
-<input type="number" id="rating">
-
-<br><br>
-
 <div id="results"></div>
 
-<script src="script.js"></script>
+
+<script>
+
+const API_URL="http://localhost:8000";
+
+
+async function searchBooks(){
+
+    let query=
+        document.getElementById(
+            "query"
+        ).value;
+
+
+    try{
+
+        let response=await fetch(
+            `${API_URL}/books/search?q=${query}`
+        );
+
+        let books=
+            await response.json();
+
+
+        let results=
+            document.getElementById(
+                "results"
+            );
+
+        results.innerHTML="";
+
+
+        books.forEach(book=>{
+
+            results.innerHTML+=`
+
+            <div>
+
+            <h3>
+            ${book.title}
+            </h3>
+
+            <p>
+            Rating:
+            ${book.rating}
+            </p>
+
+            </div>
+
+            <hr>
+
+            `;
+
+        });
+
+    }
+
+    catch(error){
+
+        console.log(error);
+
+    }
+
+}
+
+</script>
 
 </body>
+
 </html>

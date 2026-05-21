@@ -1,55 +1,179 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>Book Search Login</title>
+    <title>Book System Login</title>
 </head>
 
 <body>
 
-    <h2>Login</h2>
+<h2>Book Retrieval System</h2>
 
-    <input
-        type="text"
-        id="username"
-        placeholder="Username"
-    >
+<input
+    type="text"
+    id="username"
+    placeholder="Username"
+>
 
-    <br><br>
+<br><br>
 
-    <input
-        type="password"
-        id="password"
-        placeholder="Password"
-    >
+<input
+    type="email"
+    id="email"
+    placeholder="Email"
+>
 
-    <br><br>
+<br><br>
 
-    <button onclick="login()">
-        Login
-    </button>
+<input
+    type="password"
+    id="password"
+    placeholder="Password"
+>
+
+<br><br>
+
+<button onclick="register()">
+    Register
+</button>
+
+<button onclick="login()">
+    Login
+</button>
+
+<br><br>
+
+<div id="message"></div>
+
 
 <script>
 
-function login() {
+const API_URL="http://localhost:8000";
 
-    let username =
+
+async function register(){
+
+    let username=
         document.getElementById("username").value;
 
-    let password =
+    let email=
+        document.getElementById("email").value;
+
+    let password=
         document.getElementById("password").value;
 
-    if(username && password){
 
-        window.location.href="search.html";
+    try{
 
-    } else {
+        let response=await fetch(
+            `${API_URL}/register`,
+            {
+                method:"POST",
 
-        alert("Please enter username and password");
+                headers:{
+                    "Content-Type":"application/json"
+                },
+
+                body:JSON.stringify({
+
+                    username:username,
+                    email:email,
+                    password:password
+
+                })
+
+            }
+        );
+
+
+        let data=await response.json();
+
+        document.getElementById(
+            "message"
+        ).innerText=data.message;
 
     }
+
+    catch(error){
+
+        console.log(error);
+
+        document.getElementById(
+            "message"
+        ).innerText="Register failed";
+
+    }
+
+}
+
+
+
+async function login(){
+
+    let username=
+        document.getElementById("username").value;
+
+    let password=
+        document.getElementById("password").value;
+
+
+    try{
+
+        let response=await fetch(
+            `${API_URL}/login`,
+            {
+                method:"POST",
+
+                headers:{
+                    "Content-Type":"application/json"
+                },
+
+                body:JSON.stringify({
+
+                    username:username,
+                    password:password
+
+                })
+
+            }
+        );
+
+
+        let data=await response.json();
+
+
+        document.getElementById(
+            "message"
+        ).innerText=data.message;
+
+
+        if(response.ok){
+
+            localStorage.setItem(
+                "user_id",
+                data.user_id
+            );
+
+            window.location.href=
+                "search.html";
+        }
+
+    }
+
+    catch(error){
+
+        console.log(error);
+
+        document.getElementById(
+            "message"
+        ).innerText="Login failed";
+
+    }
+
 }
 
 </script>
 
 </body>
+
 </html>
