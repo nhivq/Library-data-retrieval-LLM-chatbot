@@ -236,13 +236,15 @@ def search_books(
             )
 
         if tag:
-
             query += """
-            AND %s=ANY(b.tags)
+            AND array_to_string(
+                b.tags,
+                ','
+            ) ILIKE %s
             """
 
             params.append(
-                tag
+                f"%{tag}%"
             )
 
         cursor.execute(
@@ -255,11 +257,13 @@ def search_books(
         return books
 
 
-    except Exception:
+    except Exception as e:
+
+        print(e)
 
         raise HTTPException(
             status_code=400,
-            detail="Could not search books"
+            detail=str(e)
         )
 
     finally:
