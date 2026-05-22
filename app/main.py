@@ -178,31 +178,89 @@ def get_books(
 # /books/search?q=history
 @app.get("/books/search")
 def search_books(
-    q: str,
-    limit: int = Query(default=10, le=100),
+    q:str | None=None,
+    author:str | None=None,
+    min_rating:float | None=None,
+    tag:str | None=None,
     conn=Depends(get_db)
 ):
 
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor=conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
-        query = """
-        SELECT *
-        FROM books
-        WHERE title ILIKE %s
-        OR
-        %s = ANY(tags) 
-            
-        LIMIT %s
+        query="""
+        SELECT DISTINCT b.*
+
+        FROM books b
+
+        LEFT JOIN book_authors ba
+        ON b.work_key=ba.work_key
+
+        LEFT JOIN authors a
+        ON ba.author_key=a.author_key
+
+        WHERE 1=1
         """
-        # ANY() means check whether this value exists inside the array
 
-        cursor.execute(query, (f"%{q}%", q, limit))
+        params=[]
 
-        books = cursor.fetchall()
+        if q:
+
+            query += """
+            AND b.title ILIKE %s
+            """
+
+            params.append(
+                f"%{q}%"
+            )
+
+        if author:
+
+            query += """
+            AND a.author_name ILIKE %s
+            """
+
+            params.append(
+                f"%{author}%"
+            )
+
+        if min_rating:
+
+            query += """
+            AND b.rating >= %s
+            """
+
+            params.append(
+                min_rating
+            )
+
+        if tag:
+
+            query += """
+            AND %s=ANY(b.tags)
+            """
+
+            params.append(
+                tag
+            )
+
+        cursor.execute(
+            query,
+            params
+        )
+
+        books=cursor.fetchall()
 
         return books
+
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Could not search books"
+        )
 
     finally:
 
