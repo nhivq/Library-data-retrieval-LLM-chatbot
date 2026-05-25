@@ -15,7 +15,7 @@ conn = psycopg2.connect(
 cur = conn.cursor()
 
 # IMPORT AUTHORS
-with open("../output/authors.json", "r", encoding="utf-8") as f:
+with open("../data/authors.json", "r", encoding="utf-8") as f:
     authors = json.load(f)
 valid_author_keys = set(authors.keys())
 
@@ -41,7 +41,7 @@ execute_batch(
 print("Authors imported")
 
 # IMPORT BOOKS
-with open("../output/books.json", "r", encoding="utf-8") as f:
+with open("../data/books.json", "r", encoding="utf-8") as f:
     books=json.load(f)
 
 book_data=[]

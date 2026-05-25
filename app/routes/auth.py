@@ -6,7 +6,7 @@ from fastapi import (
 )
 from psycopg2.extras import RealDictCursor
 from app.database.connection import get_db
-from app.schemas.schemas import RegisterRequest, LoginRequest
+from app.schemas.user_schemas import RegisterRequest, LoginRequest
 
 router=APIRouter()
 

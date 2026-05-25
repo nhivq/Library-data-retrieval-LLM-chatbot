@@ -6,7 +6,7 @@ from fastapi import (
 )
 from psycopg2.extras import RealDictCursor
 from app.database.connection import get_db
-from app.schemas.schemas import Bookmark
+from app.schemas.bookmark_schemas import Bookmark
 
 router=APIRouter()
 
