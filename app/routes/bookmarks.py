@@ -19,11 +19,11 @@ def save_bookmark(bookmark: Bookmark,
 
     try:
 
-        query = """ \
-                INSERT INTO bookmarks \
-                    (user_id, work_key) \
+        query = """ 
+                INSERT INTO bookmarks 
+                    (user_id, work_key) 
 
-                VALUES (%s, %s) \
+                VALUES (%s, %s) 
               """
 
         cursor.execute(query, (bookmark.user_id, bookmark.work_key))
@@ -57,10 +57,10 @@ def get_bookmark(user_id: int,
 
     try:
         query = """
-                SELECT b.work_key, \
-                       b.title, \
-                       b.tags, \
-                       b.publish_date, \
+                SELECT b.work_key, 
+                       b.title, 
+                       b.tags, 
+                       b.publish_date, 
                        b.rating
 
                 FROM bookmarks bm
@@ -68,7 +68,7 @@ def get_bookmark(user_id: int,
                          JOIN books b
                               ON bm.work_key = b.work_key
 
-                WHERE bm.user_id = %s \
+                WHERE bm.user_id = %s 
                 """
 
         cursor.execute(query, (user_id,))
@@ -92,11 +92,11 @@ def delete_bookmark(work_key: str,
     try:
 
         query = """
-                DELETE \
+                DELETE 
                 FROM bookmarks
 
                 WHERE user_id = %s
-                  AND work_key = %s \
+                  AND work_key = %s 
                 """
 
         cursor.execute(query, (user_id, work_key))

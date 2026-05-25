@@ -33,7 +33,7 @@ def get_books(
 
         query = """
                 SELECT *
-                FROM books LIMIT %s \
+                FROM books LIMIT %s 
                 """
 
         cursor.execute(query, (limit,))
@@ -56,35 +56,37 @@ def search_books(
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
+        page:int=1,
+        limit:int=10,
         conn=Depends(get_db)
 ):
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
-        query = """ \
-                SELECT DISTINCT b.* \
+        query = """ 
+                SELECT DISTINCT b.* 
 
-                FROM books b \
+                FROM books b 
 
-                         LEFT JOIN book_authors ba \
-                                   ON b.work_key = ba.work_key \
+                         LEFT JOIN book_authors ba 
+                                   ON b.work_key = ba.work_key 
 
-                         LEFT JOIN authors a \
-                                   ON ba.author_key = a.author_key \
+                         LEFT JOIN authors a 
+                                   ON ba.author_key = a.author_key 
 
-                WHERE 1 = 1 \
+                WHERE 1 = 1 
               """
 
         params = []
 
         if q:
             query += """
-            AND b.title ILIKE %s
-            """
+                AND b.title ~* %s
+                """
 
             params.append(
-                f"%{q}%"
+                fr"\m{q}\M"
             )
 
         if author:
@@ -96,7 +98,7 @@ def search_books(
                 f"%{author}%"
             )
 
-        if min_rating:
+        if min_rating is not None:
             query += """
             AND b.rating >= %s
             """
@@ -117,6 +119,25 @@ def search_books(
                 f"%{tag}%"
             )
 
+        if page < 1:
+            page = 1
+
+        if limit < 1:
+            limit = 10
+
+        if limit > 100:
+            limit = 100
+
+        offset = (page - 1) * limit
+
+        query += """
+        LIMIT %s
+        OFFSET %s
+        """
+
+        params.append(limit)
+        params.append(offset)
+
         cursor.execute(
             query,
             params
@@ -133,7 +154,7 @@ def search_books(
 
         raise HTTPException(
             status_code=400,
-            detail=str(e)
+            detail="Could not search books"
         )
 
     finally:
@@ -157,11 +178,11 @@ def get_book(
     try:
 
         query = """
-                SELECT b.work_key, \
-                       b.title, \
-                       b.tags, \
-                       b.publish_date, \
-                       b.rating, \
+                SELECT b.work_key, 
+                       b.title, 
+                       b.tags, 
+                       b.publish_date, 
+                       b.rating, 
 
                        ARRAY_AGG(a.author_name) AS authors
 
@@ -175,11 +196,11 @@ def get_book(
 
                 WHERE b.work_key = %s
 
-                GROUP BY b.work_key, \
-                         b.title, \
-                         b.tags, \
-                         b.publish_date, \
-                         b.rating \
+                GROUP BY b.work_key, 
+                         b.title, 
+                         b.tags, 
+                         b.publish_date, 
+                         b.rating 
                 """
 
         cursor.execute(query, (work_key,))
@@ -209,8 +230,8 @@ def get_author(author_key: str,
     try:
 
         query = """
-                SELECT a.author_key, \
-                       a.author_name, \
+                SELECT a.author_key, 
+                       a.author_name, 
 
                        ARRAY_AGG(b.title) AS books
 
@@ -224,8 +245,8 @@ def get_author(author_key: str,
 
                 WHERE a.author_key = %s
 
-                GROUP BY a.author_key, \
-                         a.author_name \
+                GROUP BY a.author_key, 
+                         a.author_name 
                 """
 
         cursor.execute(query, (author_key,))
