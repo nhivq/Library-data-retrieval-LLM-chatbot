@@ -10,7 +10,6 @@ from app.schemas.schemas import Bookmark
 
 router=APIRouter()
 
-
 # ---------- Save Bookmark ----------
 @router.post("/bookmarks")
 def save_bookmark(bookmark: Bookmark,

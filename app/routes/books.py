@@ -10,7 +10,10 @@ from app.schemas.schemas import BookResponse
 
 router=APIRouter()
 
-
+# ---------- Get Books ----------
+# Path allows:
+# /books
+# /books?limit=20
 @router.get(
     "/books",
     response_model=list[BookResponse]
