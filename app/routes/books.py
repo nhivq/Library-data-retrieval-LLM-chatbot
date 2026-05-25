@@ -32,8 +32,32 @@ def get_books(
     try:
 
         query = """
-                SELECT *
-                FROM books LIMIT %s 
+                SELECT b.work_key,
+                       b.title,
+                       b.tags,
+                       b.publish_date,
+                       b.rating,
+                       COALESCE(
+                           ARRAY_AGG(a.author_name)
+                           FILTER (WHERE a.author_name IS NOT NULL),
+                           ARRAY[]::text[]
+                       ) AS authors
+
+                FROM books b
+
+                         LEFT JOIN book_authors ba
+                                   ON b.work_key = ba.work_key
+
+                         LEFT JOIN authors a
+                                   ON ba.author_key = a.author_key
+
+                GROUP BY b.work_key,
+                         b.title,
+                         b.tags,
+                         b.publish_date,
+                         b.rating
+
+                LIMIT %s 
                 """
 
         cursor.execute(query, (limit,))
@@ -50,7 +74,10 @@ def get_books(
 # ---------- Search Books ----------
 # Path allows:
 # /books/search?q=history
-@router.get("/books/search")
+@router.get(
+    "/books/search",
+    response_model=list[BookResponse]
+)
 def search_books(
         q: str | None = None,
         author: str | None = None,
@@ -64,8 +91,17 @@ def search_books(
 
     try:
 
-        query = """ 
-                SELECT DISTINCT b.* 
+        query = """
+                SELECT b.work_key,
+                       b.title,
+                       b.tags,
+                       b.publish_date,
+                       b.rating,
+                       COALESCE(
+                           ARRAY_AGG(a.author_name)
+                           FILTER (WHERE a.author_name IS NOT NULL),
+                           ARRAY[]::text[]
+                       ) AS authors
 
                 FROM books b 
 
@@ -91,7 +127,14 @@ def search_books(
 
         if author:
             query += """
-            AND a.author_name ILIKE %s
+            AND EXISTS (
+                SELECT 1
+                FROM book_authors filter_ba
+                         JOIN authors filter_a
+                              ON filter_ba.author_key = filter_a.author_key
+                WHERE filter_ba.work_key = b.work_key
+                  AND filter_a.author_name ILIKE %s
+            )
             """
 
             params.append(
@@ -131,6 +174,12 @@ def search_books(
         offset = (page - 1) * limit
 
         query += """
+        GROUP BY b.work_key,
+                 b.title,
+                 b.tags,
+                 b.publish_date,
+                 b.rating
+
         LIMIT %s
         OFFSET %s
         """
