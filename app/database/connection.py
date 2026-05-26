@@ -24,3 +24,6 @@ def get_db():
 
     finally:
         conn.close()
+
+# Always use try/finally to guarantee resources are cleaned up even if an error occurs
+# Otherwise, cursor or connections might remain open and cause resource leaks

@@ -1,6 +1,5 @@
 from fastapi import (
     APIRouter,
-    Query,
     HTTPException,
     Depends
 )

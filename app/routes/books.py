@@ -4,7 +4,7 @@ from fastapi import (
     HTTPException,
     Depends
 )
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor # By default, psycopg2 returns tuples
 from app.database.connection import get_db
 from app.schemas.book_schemas import BookResponse
 
@@ -19,17 +19,17 @@ router=APIRouter()
     response_model=list[BookResponse]
 )
 def get_books(
-        limit: int = Query(
+        limit: int = Query( # Query() allows additional validation and metadata
             default=10,
             le=100  # limit <= 100
         ),
-        conn=Depends(get_db)
+        conn=Depends(get_db) # avoid repeating db connection code in every endpoint -> easier to maintain
 ):
-    cursor = conn.cursor(
-        cursor_factory=RealDictCursor
+    cursor = conn.cursor( # Cursor executes SQL commands and retrieves result
+        cursor_factory=RealDictCursor # SQL execution is done through cursor objects
     )
 
-    try:
+    try: # "try" allow handling exceptions without crashing the application
 
         query = """
                 SELECT b.work_key,
@@ -60,13 +60,13 @@ def get_books(
                 LIMIT %s 
                 """
 
-        cursor.execute(query, (limit,))
+        cursor.execute(query, (limit,)) # Parameterized query to prevent SQL Injection and separate SQL logic from user input
 
         books = cursor.fetchall()
 
         return books
 
-    finally:
+    finally: # Make sure là kể cả lỗi hay 0 thì luôn cleanup
 
         cursor.close()
 
@@ -76,14 +76,14 @@ def get_books(
 # /books/search?q=history
 @router.get(
     "/books/search",
-    response_model=list[BookResponse]
+    response_model=list[BookResponse] # dùng list vì /books returns multiple books
 )
 def search_books(
-        q: str | None = None,
+        q: str | None = None, # None = None -> this is optional, allow request without this parameter required
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
-        page:int=1,
+        page:int=1, # with nothing behind, this is mandatory -> without it, fail validation
         limit:int=10,
         conn=Depends(get_db)
 ):
@@ -91,14 +91,15 @@ def search_books(
 
     try:
 
+        # COALESCE returns first non-null value, replaces all null values with []
         query = """
                 SELECT b.work_key,
                        b.title,
                        b.tags,
                        b.publish_date,
                        b.rating,
-                       COALESCE(
-                           ARRAY_AGG(a.author_name)
+                       COALESCE(  
+                           ARRAY_AGG(a.author_name) 
                            FILTER (WHERE a.author_name IS NOT NULL),
                            ARRAY[]::text[]
                        ) AS authors
@@ -117,8 +118,9 @@ def search_books(
         params = []
 
         if q:
+            # ~* dùng tương tự như ILIKE nhưng sẽ tránh đc i: art; o: cartoon
             query += """
-                AND b.title ~* %s
+                AND b.title ~* %s 
                 """
 
             params.append(
@@ -150,7 +152,7 @@ def search_books(
                 min_rating
             )
 
-        if tag:
+        if tag: # ILIKE = case-insensitive matching; LIKE = case-sensitive
             query += """
             AND array_to_string(
                 b.tags,
@@ -162,7 +164,7 @@ def search_books(
                 f"%{tag}%"
             )
 
-        if page < 1:
+        if page < 1: # manually validate; query validation isn't used in this case for simplicity
             page = 1
 
         if limit < 1:
@@ -201,8 +203,8 @@ def search_books(
 
         print(e)
 
-        raise HTTPException(
-            status_code=400,
+        raise HTTPException(  # Standardize API behaviour
+            status_code=400, # Return proper HTTP status codes & meaningful error messages
             detail="Could not search books"
         )
 
@@ -216,8 +218,8 @@ def search_books(
 # /works/OL12345W (double // because work_key contains /)
 @router.get(
     "/books/{work_key:path}",
-    response_model=BookResponse
-)
+    response_model=BookResponse # response_model validates API responses & ensures the returned data follows a structure
+)                               # If it is removed -> May return wrong fields/ unexpected data
 def get_book(
         work_key: str,
         conn=Depends(get_db)

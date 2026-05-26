@@ -1,6 +1,5 @@
 from fastapi import (
     APIRouter,
-    Query,
     HTTPException,
     Depends
 )
@@ -44,7 +43,7 @@ def register(user: RegisterRequest,
 
     except Exception as e:
 
-        conn.rollback()
+        conn.rollback() # Nếu INSERT fails midway -> restores db consistency
 
         print(e)
 
