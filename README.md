@@ -25,27 +25,3 @@ Open Swagger:
 ```text
 http://127.0.0.1:8000/docs
 ```
-
-Request flow:
-
-Frontend
-    ↓
-FastAPI Router
-    ↓
-Dependency injection
-    ↓
-Database connection
-    ↓
-Cursor
-    ↓
-SQL query
-    ↓
-PostgreSQL
-    ↓
-Result
-    ↓
-Pydantic response model
-    ↓
-JSON response
-    ↓
-Frontend
