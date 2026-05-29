@@ -27,6 +27,3 @@ build/
 
 # Jupyter
 .ipynb_checkpoints/
-
-# Large/generated data
-data/
