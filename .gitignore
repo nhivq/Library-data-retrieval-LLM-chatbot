@@ -1,15 +1,33 @@
-# Python
+# Python cache
 __pycache__/
 *.pyc
 
 # Virtual environment
 .venv/
-
-# IDE
-.idea/
+venv/
 
 # Environment variables
 .env
 
+# IDE/editor
+.idea/
+
 # OS files
 .DS_Store
+
+# Testing
+.pytest_cache/
+
+# Logs
+*.log
+
+# Build files
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Large/generated data
+data/
+output/
