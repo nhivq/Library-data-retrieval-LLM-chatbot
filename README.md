@@ -16,14 +16,29 @@
 
 ### Setup
 
+Clone repo
+```bash
+git clone your-repo-url
+```
+
 Create venv:
 ```bash
 python -m venv .venv
+source .venv/bin/activate
 ```
 
 Install packages:
 ```bash
 pip install -r requirements.txt
+```
+
+Create database
+```bash
+createdb -U postgres book_db
+```
+Run schema.sql
+```bash
+psql -U postgres -d book_db -f database/schema.sql
 ```
 
 Import data:
