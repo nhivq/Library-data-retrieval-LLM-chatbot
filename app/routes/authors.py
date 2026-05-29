@@ -21,8 +21,7 @@ def get_author(
             conn=conn
         )
 
-    except Exception as e:
-        print(e)
+    except Exception:
 
         raise HTTPException(
             status_code=404,

@@ -25,7 +25,7 @@ def register(
             conn=conn
         )
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=400,
             detail="Could not register user"
