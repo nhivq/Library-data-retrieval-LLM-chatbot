@@ -26,7 +26,6 @@ def register(
         )
 
     except Exception as e:
-        print(e)
         raise HTTPException(
             status_code=400,
             detail="Could not register user"

@@ -35,7 +35,6 @@ def get_books(
         )
 
     except Exception as e:
-        print(e)
 
         raise HTTPException(
             status_code=400,
@@ -113,8 +112,6 @@ def get_book(
         raise
 
     except Exception as e:
-
-        print(e)
 
         raise HTTPException(
             status_code=400,
