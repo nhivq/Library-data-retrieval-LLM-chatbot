@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.books import router as books_router
 from app.routes.bookmarks import router as bookmarks_router
+from app.routes.authors import router as authors_router
 from app.routes.auth import router as auth_router
 
 app = FastAPI()
@@ -29,6 +30,10 @@ app.include_router(
 
 app.include_router(
     bookmarks_router
+)
+
+app.include_router(
+    authors_router
 )
 
 app.include_router(

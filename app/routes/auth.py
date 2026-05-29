@@ -3,101 +3,57 @@ from fastapi import (
     HTTPException,
     Depends
 )
-from psycopg2.extras import RealDictCursor
 from app.database.connection import get_db
 from app.schemas.user_schemas import RegisterRequest, LoginRequest
+from app.services.auth_service import register_user_service
+from app.services.auth_service import login_service
 
 router=APIRouter()
 
 # ---------- Register account ----------
 @router.post("/register")
-def register(user: RegisterRequest,
-             conn=Depends(get_db)
+def register(
+        user: RegisterRequest,
+        conn=Depends(get_db)
 ):
-
-    cursor=conn.cursor()
-
     try:
 
-        query="""
-        INSERT INTO users
-        (username, email, password)
-
-        VALUES(%s,%s,%s)
-        """
-
-        cursor.execute(
-            query,
-            (
-                user.username,
-                user.email,
-                user.password
-            )
+        return register_user_service(
+            username=user.username,
+            email=user.email,
+            password=user.password,
+            conn=conn
         )
-
-        conn.commit()
-
-        return {
-            "message":"User registered"
-        }
 
     except Exception as e:
-
-        conn.rollback() # Nếu INSERT fails midway -> restores db consistency
-
         print(e)
-
         raise HTTPException(
             status_code=400,
-            detail=str(e)
+            detail="Could not register user"
         )
-
-    finally:
-
-        cursor.close()
 
 
 # ---------- User Login ----------
 @router.post("/login")
-def login(user: LoginRequest,
-          conn=Depends(get_db)
+def login(
+        user: LoginRequest,
+        conn=Depends(get_db)
 ):
-
-    cursor=conn.cursor(cursor_factory=RealDictCursor)
-
     try:
 
-        query="""
-        SELECT *
-        FROM users
-        WHERE username=%s
-        """
-
-        cursor.execute(query, (user.username,))
-
-        existing_user=cursor.fetchone()
-
-        if existing_user is None:
-
-            raise HTTPException(
-                status_code=404,
-                detail="User not found"
-            )
+        return login_service(
+            username=user.username,
+            password=user.password,
+            conn=conn
+        )
 
 
-        if existing_user["password"] != user.password:
+    except ValueError as e:
 
-            raise HTTPException(
-                status_code=401,
-                detail="Wrong password"
-            )
+        raise HTTPException(
 
+            status_code=401,
 
-        return {
-            "message":"Login successful",
-            "user_id": existing_user["user_id"]
-        }
+            detail=str(e)
 
-    finally:
-
-        cursor.close()
+        )

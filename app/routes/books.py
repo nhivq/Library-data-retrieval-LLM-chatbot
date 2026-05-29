@@ -4,9 +4,11 @@ from fastapi import (
     HTTPException,
     Depends
 )
-from psycopg2.extras import RealDictCursor # By default, psycopg2 returns tuples
 from app.database.connection import get_db
 from app.schemas.book_schemas import BookResponse
+from app.services.book_service import search_books_service
+from app.services.book_service import get_specific_book_service
+from app.services.book_service import get_books_service
 
 router=APIRouter()
 
@@ -25,50 +27,20 @@ def get_books(
         ),
         conn=Depends(get_db) # avoid repeating db connection code in every endpoint -> easier to maintain
 ):
-    cursor = conn.cursor( # Cursor executes SQL commands and retrieves result
-        cursor_factory=RealDictCursor # SQL execution is done through cursor objects
-    )
+    try:
 
-    try: # "try" allow handling exceptions without crashing the application
+        return get_books_service(
+            limit=limit,
+            conn=conn
+        )
 
-        query = """
-                SELECT b.work_key,
-                       b.title,
-                       b.tags,
-                       b.publish_date,
-                       b.rating,
-                       COALESCE(
-                           ARRAY_AGG(a.author_name)
-                           FILTER (WHERE a.author_name IS NOT NULL),
-                           ARRAY[]::text[]
-                       ) AS authors
+    except Exception as e:
+        print(e)
 
-                FROM books b
-
-                         LEFT JOIN book_authors ba
-                                   ON b.work_key = ba.work_key
-
-                         LEFT JOIN authors a
-                                   ON ba.author_key = a.author_key
-
-                GROUP BY b.work_key,
-                         b.title,
-                         b.tags,
-                         b.publish_date,
-                         b.rating
-
-                LIMIT %s 
-                """
-
-        cursor.execute(query, (limit,)) # Parameterized query to prevent SQL Injection and separate SQL logic from user input
-
-        books = cursor.fetchall()
-
-        return books
-
-    finally: # Make sure là kể cả lỗi hay 0 thì luôn cleanup
-
-        cursor.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Could not get books"
+        )
 
 
 # ---------- Search Books ----------
@@ -79,124 +51,25 @@ def get_books(
     response_model=list[BookResponse] # dùng list vì /books returns multiple books
 )
 def search_books(
-        q: str | None = None, # None = None -> this is optional, allow request without this parameter required
+        q: str | None = None,
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
-        page:int=1, # with nothing behind, this is mandatory -> without it, fail validation
+        page:int=1,
         limit:int=10,
         conn=Depends(get_db)
 ):
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-
     try:
 
-        # COALESCE returns first non-null value, replaces all null values with []
-        query = """
-                SELECT b.work_key,
-                       b.title,
-                       b.tags,
-                       b.publish_date,
-                       b.rating,
-                       COALESCE(  
-                           ARRAY_AGG(a.author_name) 
-                           FILTER (WHERE a.author_name IS NOT NULL),
-                           ARRAY[]::text[]
-                       ) AS authors
-
-                FROM books b 
-
-                         LEFT JOIN book_authors ba 
-                                   ON b.work_key = ba.work_key 
-
-                         LEFT JOIN authors a 
-                                   ON ba.author_key = a.author_key 
-
-                WHERE 1 = 1 
-              """
-
-        params = []
-
-        if q:
-            # ~* dùng tương tự như ILIKE nhưng sẽ tránh đc i: art; o: cartoon
-            query += """
-                AND b.title ~* %s 
-                """
-
-            params.append(
-                fr"\m{q}\M"
-            )
-
-        if author:
-            query += """
-            AND EXISTS (
-                SELECT 1
-                FROM book_authors filter_ba
-                         JOIN authors filter_a
-                              ON filter_ba.author_key = filter_a.author_key
-                WHERE filter_ba.work_key = b.work_key
-                  AND filter_a.author_name ILIKE %s
-            )
-            """
-
-            params.append(
-                f"%{author}%"
-            )
-
-        if min_rating is not None:
-            query += """
-            AND b.rating >= %s
-            """
-
-            params.append(
-                min_rating
-            )
-
-        if tag: # ILIKE = case-insensitive matching; LIKE = case-sensitive
-            query += """
-            AND array_to_string(
-                b.tags,
-                ','
-            ) ILIKE %s
-            """
-
-            params.append(
-                f"%{tag}%"
-            )
-
-        if page < 1: # manually validate; query validation isn't used in this case for simplicity
-            page = 1
-
-        if limit < 1:
-            limit = 10
-
-        if limit > 100:
-            limit = 100
-
-        offset = (page - 1) * limit
-
-        query += """
-        GROUP BY b.work_key,
-                 b.title,
-                 b.tags,
-                 b.publish_date,
-                 b.rating
-
-        LIMIT %s
-        OFFSET %s
-        """
-
-        params.append(limit)
-        params.append(offset)
-
-        cursor.execute(
-            query,
-            params
+        return search_books_service(
+            q=q,
+            author=author,
+            min_rating=min_rating,
+            tag=tag,
+            page=page,
+            limit=limit,
+            conn=conn
         )
-
-        books = cursor.fetchall()
-
-        return books
 
 
     except Exception as e:
@@ -207,10 +80,6 @@ def search_books(
             status_code=400, # Return proper HTTP status codes & meaningful error messages
             detail="Could not search books"
         )
-
-    finally:
-
-        cursor.close()
 
 
 # ---------- Get Specific Single Book ----------
@@ -224,39 +93,13 @@ def get_book(
         work_key: str,
         conn=Depends(get_db)
 ):
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
-        query = """
-                SELECT b.work_key, 
-                       b.title, 
-                       b.tags, 
-                       b.publish_date, 
-                       b.rating, 
-
-                       ARRAY_AGG(a.author_name) AS authors
-
-                FROM books b
-
-                         JOIN book_authors ba
-                              ON b.work_key = ba.work_key
-
-                         JOIN authors a
-                              ON ba.author_key = a.author_key
-
-                WHERE b.work_key = %s
-
-                GROUP BY b.work_key, 
-                         b.title, 
-                         b.tags, 
-                         b.publish_date, 
-                         b.rating 
-                """
-
-        cursor.execute(query, (work_key,))
-
-        book = cursor.fetchone()  # Because 1 book can have many authors
+        book = get_specific_book_service(
+            work_key=work_key,
+            conn=conn
+        )
 
         if not book:
             raise HTTPException(
@@ -265,53 +108,15 @@ def get_book(
             )
 
         return book
+    except HTTPException:
 
-    finally:
+        raise
 
-        cursor.close()
+    except Exception as e:
 
+        print(e)
 
-# ---------- Get Author ----------
-@router.get("/authors/{author_key:path}")
-def get_author(author_key: str,
-               conn=Depends(get_db)
-               ):
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-    try:
-
-        query = """
-                SELECT a.author_key, 
-                       a.author_name, 
-
-                       ARRAY_AGG(b.title) AS books
-
-                FROM authors a
-
-                         JOIN book_authors ba
-                              ON a.author_key = ba.author_key
-
-                         JOIN books b
-                              ON ba.work_key = b.work_key
-
-                WHERE a.author_key = %s
-
-                GROUP BY a.author_key, 
-                         a.author_name 
-                """
-
-        cursor.execute(query, (author_key,))
-
-        author = cursor.fetchone()
-
-        if not author:
-            raise HTTPException(
-                status_code=404,
-                detail="Author not found"
-            )
-
-        return author
-
-    finally:
-
-        cursor.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Could not retrieve book"
+        )

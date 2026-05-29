@@ -3,106 +3,80 @@ from fastapi import (
     HTTPException,
     Depends
 )
-from psycopg2.extras import RealDictCursor
 from app.database.connection import get_db
 from app.schemas.bookmark_schemas import Bookmark
+from app.services.bookmark_service import get_bookmark_service
+from app.services.bookmark_service import save_bookmark_service
+from app.services.bookmark_service import delete_bookmark_service
 
 router=APIRouter()
 
 # ---------- Save Bookmark ----------
 @router.post("/bookmarks")
-def save_bookmark(bookmark: Bookmark,
-                  conn=Depends(get_db)
-                  ):
-    cursor = conn.cursor()
-
+def save_bookmark(
+        bookmark: Bookmark,
+        conn=Depends(get_db)
+):
     try:
 
-        query = """ 
-                INSERT INTO bookmarks 
-                    (user_id, work_key) 
-
-                VALUES (%s, %s) 
-              """
-
-        cursor.execute(query, (bookmark.user_id, bookmark.work_key))
-
-        conn.commit()  # Prevent changes disappeared
-
-        return {"message": "Bookmark saved"}
+        return save_bookmark_service(
+            user_id=bookmark.user_id,
+            work_key=bookmark.work_key,
+            conn=conn
+        )
 
     except Exception:  # Undo changes if error happens
-
-        conn.rollback()
 
         raise HTTPException(
             status_code=400,
             detail="Could not save bookmark"
         )
 
-    finally:
-
-        cursor.close()
-
 
 # ---------- Get Bookmarks ----------
 # Path allows:
 # /bookmarks?user_id=1
 @router.get("/bookmarks")
-def get_bookmark(user_id: int,
-                 conn=Depends(get_db)
-                 ):
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-
+def get_bookmark(
+        user_id: int,
+        conn=Depends(get_db)
+):
     try:
-        query = """
-                SELECT b.work_key, 
-                       b.title, 
-                       b.tags, 
-                       b.publish_date, 
-                       b.rating
 
-                FROM bookmarks bm
+        return get_bookmark_service(
+            user_id=user_id,
+            conn=conn
+        )
 
-                         JOIN books b
-                              ON bm.work_key = b.work_key
+    except Exception as e:
+        print(e)
 
-                WHERE bm.user_id = %s 
-                """
-
-        cursor.execute(query, (user_id,))
-
-        bookmarks = cursor.fetchall()
-
-        return bookmarks
-
-    finally:
-        cursor.close()
+        raise HTTPException(
+            status_code=404,
+            detail="Bookmark not found"
+        )
 
 
 # ---------- Delete Bookmarks ----------
 @router.delete("/bookmarks/{work_key:path}")
-def delete_bookmark(work_key: str,
-                    user_id: int,
-                    conn=Depends(get_db)
-                    ):
+def delete_bookmark(
+        work_key: str,
+        user_id: int,
+        conn=Depends(get_db)
+):
     cursor = conn.cursor()
 
     try:
 
-        query = """
-                DELETE 
-                FROM bookmarks
+        return delete_bookmark_service(
+            user_id=user_id,
+            work_key=work_key,
+            conn=conn
+        )
 
-                WHERE user_id = %s
-                  AND work_key = %s 
-                """
+    except Exception:  # Undo changes if error happens
 
-        cursor.execute(query, (user_id, work_key))
-
-        conn.commit()
-
-        return {"message": "Bookmark deleted"}
-
-    finally:
-        cursor.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Could not delete bookmark"
+        )
