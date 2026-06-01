@@ -1,4 +1,26 @@
+import bcrypt
 from psycopg2.extras import RealDictCursor
+
+# Helper function
+def hash_password(password: str):
+
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
+
+
+# Helper function
+def verify_password(
+        plain_password: str,
+        hashed_password: str
+):
+
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8")
+    )
+
 
 def register_user_service(
         username: str,
@@ -17,12 +39,16 @@ def register_user_service(
         VALUES(%s,%s,%s)
         """
 
+        hashed_password = hash_password(
+            password
+        )
+
         cursor.execute(
             query,
             (
                 username,
                 email,
-                password
+                hashed_password
             )
         )
 
@@ -31,7 +57,8 @@ def register_user_service(
         return {"message":"User registered"}
 
 
-    except Exception:
+    except Exception as e:
+        print(e)
 
         conn.rollback()
 
@@ -65,7 +92,10 @@ def login_service(
         if existing_user is None:
             raise ValueError("User not found")
 
-        if existing_user["password"] != password:
+        if not verify_password(
+                password,
+                existing_user["password"]
+        ):
             raise ValueError("Wrong password")
 
         return {
