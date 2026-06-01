@@ -21,7 +21,7 @@ async function searchBooks(){
     if (tag) params.append("tag", tag);
 
     let url=
-`http://localhost:8000/books/search?${params.toString()}`;
+`http://10.6.200.83:8000/books/search?${params.toString()}`;
 
 
     let response=

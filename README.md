@@ -60,3 +60,8 @@ Open frontend:
 ```text
 frontend/login.html
 ```
+
+HTTP server
+```text
+http://10.6.200.83:8080/
+```
