@@ -33,7 +33,8 @@ q: str | None = None,
         )
 
     finally:
-        conn.close()
+
+        db.close()
 
 
 if __name__ == "__main__":
