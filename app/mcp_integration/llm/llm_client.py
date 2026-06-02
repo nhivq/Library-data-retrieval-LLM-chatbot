@@ -1,12 +1,14 @@
 import asyncio
 import json
 
-from app.mcp_integration.llm import client, llm, mcp_tool_to_openrouter
+from app.mcp_integration.llm.setup import client, llm
+from app.mcp_integration.llm.tool_converter import mcp_tool_to_openrouter
 
 
 DEFAULT_QUESTION = "Find history books with rating above 4"
 
-async def main(question: str = DEFAULT_QUESTION):
+
+async def ask_agent(question: str) -> str:
     async with client:
 
         mcp_tools = await client.list_tools()
@@ -89,8 +91,7 @@ async def main(question: str = DEFAULT_QUESTION):
                 ]
             )
 
-            print("\nFinal Answer:")
-            print(
+            return (
                 final_response
                 .choices[0]
                 .message
@@ -99,9 +100,12 @@ async def main(question: str = DEFAULT_QUESTION):
 
         else:
 
-            print("No tool call requested")
+            return message.content
 
-            print(message.content)
+
+async def main(question: str = DEFAULT_QUESTION):
+    answer = await ask_agent(question)
+    print(answer)
 
 
 if __name__ == "__main__":
