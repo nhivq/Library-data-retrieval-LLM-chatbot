@@ -5,7 +5,9 @@ from app.services.book_service import search_books_service
 # Create and name MCP server
 mcp = FastMCP("Book Retrieval MCP")
 
-@mcp.tool()
+@mcp.tool(
+    description="Search books by title, author, rating and tag filters"
+)
 def search_books(
 q: str | None = None,
         author: str | None = None,
@@ -31,8 +33,7 @@ q: str | None = None,
         )
 
     finally:
-
-        db.close()
+        conn.close()
 
 
 if __name__ == "__main__":

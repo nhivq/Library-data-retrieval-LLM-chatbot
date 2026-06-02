@@ -57,8 +57,7 @@ def register_user_service(
         return {"message":"User registered"}
 
 
-    except Exception as e:
-        print(e)
+    except Exception :
 
         conn.rollback()
 
