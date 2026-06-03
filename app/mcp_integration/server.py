@@ -1,6 +1,6 @@
 from fastmcp import FastMCP
 from app.database.connection import get_db
-from app.services.book_service import search_books_service
+from app.services import author_service, book_service
 
 # Create and name MCP server
 mcp = FastMCP("Book Retrieval MCP")
@@ -22,7 +22,7 @@ q: str | None = None,
 
     try:
 
-        return search_books_service(
+        return book_service.search_books(
             q=q,
             author=author,
             min_rating=min_rating,
@@ -32,6 +32,74 @@ q: str | None = None,
             conn=conn
         )
 
+    finally:
+
+        db.close()
+
+
+@mcp.tool(
+    description="Get a book by its work_key"
+)
+def get_book(
+    work_key: str
+):
+    
+    db = get_db()
+    conn = next(db)
+
+    try:
+
+        return book_service.get_specific_book(
+            work_key=work_key,
+            conn=conn
+        )
+    
+    finally:
+
+        db.close()
+
+
+@mcp.tool(
+    description="Get author information by author_key"
+)
+def get_author(
+    author_key: str
+):
+    
+    db = get_db()
+    conn = next(db)
+
+    try:
+
+        return author_service.get_author(
+            author_key=author_key,
+            conn=conn
+        )
+    
+    finally:
+
+        db.close()
+
+
+@mcp.tool(
+    description="Search author by author name or author key"
+)
+def search_authors(
+        author_name: str | None = None,
+        author_key: str | None = None,
+):
+    
+    db = get_db()
+    conn = next(db)
+
+    try:
+
+        return author_service.search_authors(
+            author_name=author_name,
+            author_key=author_key,
+            conn=conn
+        )
+    
     finally:
 
         db.close()
