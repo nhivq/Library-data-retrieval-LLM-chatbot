@@ -5,8 +5,7 @@ from fastapi import (
 )
 from app.database.connection import get_db
 from app.schemas.user_schemas import RegisterRequest, LoginRequest
-from app.services.auth_service import register_user
-from app.services.auth_service import login_user
+from app.services import auth_service 
 
 router=APIRouter()
 
@@ -18,7 +17,7 @@ def register(
 ):
     try:
 
-        return register_user(
+        return auth_service.register_user(
             username=user.username,
             email=user.email,
             password=user.password,
@@ -40,7 +39,7 @@ def login(
 ):
     try:
 
-        return login_user(
+        return auth_service.login_user(
             username=user.username,
             password=user.password,
             conn=conn

@@ -1,6 +1,6 @@
 from psycopg2.extras import RealDictCursor
 
-def save_bookmark_service(
+def save_bookmark(
         user_id: int,
         work_key: str,
         conn=None
@@ -33,7 +33,7 @@ def save_bookmark_service(
         cursor.close()
 
 
-def get_bookmark_service(
+def get_bookmark(
         user_id: int,
         conn = None
 ):
@@ -65,7 +65,7 @@ def get_bookmark_service(
         cursor.close()
 
 
-def delete_bookmark_service(
+def delete_bookmark(
         work_key: str,
         user_id: int,
         conn=None

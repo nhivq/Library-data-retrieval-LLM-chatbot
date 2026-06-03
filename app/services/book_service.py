@@ -1,7 +1,7 @@
 from psycopg2.extras import RealDictCursor # By default, psycopg2 returns tuples
 
 # display first n books
-def get_book(
+def get_books(
         limit: int = 10,
         conn=None
 ):
@@ -202,7 +202,7 @@ def get_specific_book(
                          JOIN authors a
                               ON ba.author_key = a.author_key
 
-                WHERE b.work_key = %s
+                WHERE b.work_key LIKE %s
 
                 GROUP BY b.work_key, 
                          b.title, 
