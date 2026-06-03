@@ -5,9 +5,9 @@ from fastapi import (
 )
 from app.database.connection import get_db
 from app.schemas.bookmark_schemas import Bookmark
-from app.services.bookmark_service import get_bookmark_service
-from app.services.bookmark_service import save_bookmark_service
-from app.services.bookmark_service import delete_bookmark_service
+from app.services.bookmark_service import get_bookmark
+from app.services.bookmark_service import save_bookmark
+from app.services.bookmark_service import delete_bookmark
 
 router=APIRouter()
 
@@ -19,7 +19,7 @@ def save_bookmark(
 ):
     try:
 
-        return save_bookmark_service(
+        return save_bookmark(
             user_id=bookmark.user_id,
             work_key=bookmark.work_key,
             conn=conn
@@ -43,7 +43,7 @@ def get_bookmark(
 ):
     try:
 
-        return get_bookmark_service(
+        return get_bookmark(
             user_id=user_id,
             conn=conn
         )
@@ -68,7 +68,7 @@ def delete_bookmark(
 
     try:
 
-        return delete_bookmark_service(
+        return delete_bookmark(
             user_id=user_id,
             work_key=work_key,
             conn=conn

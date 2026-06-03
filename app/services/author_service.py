@@ -1,6 +1,6 @@
 from psycopg2.extras import RealDictCursor
 
-def get_author_service(
+def get_author(
         author_key: str,
         conn = None
 ):
@@ -15,10 +15,10 @@ def get_author_service(
 
                 FROM authors a
 
-                         JOIN book_authors ba
+                        LEFT JOIN book_authors ba
                               ON a.author_key = ba.author_key
 
-                         JOIN books b
+                        LEFT JOIN books b
                               ON ba.work_key = b.work_key
 
                 WHERE a.author_key = %s

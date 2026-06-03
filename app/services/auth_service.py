@@ -22,7 +22,7 @@ def verify_password(
     )
 
 
-def register_user_service(
+def register_user(
         username: str,
         email: str,
         password: str,
@@ -69,7 +69,7 @@ def register_user_service(
         cursor.close()
 
 
-def login_service(
+def login_user(
         username: str,
         password: str,
         conn=None

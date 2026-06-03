@@ -6,9 +6,8 @@ from fastapi import (
 )
 from app.database.connection import get_db
 from app.schemas.book_schemas import BookResponse
-from app.services.book_service import search_books_service
-from app.services.book_service import get_specific_book_service
-from app.services.book_service import get_books_service
+from app.services.book_service import search_books
+from app.services.book_service import get_specific_book
 
 router=APIRouter()
 
@@ -29,7 +28,7 @@ def get_books(
 ):
     try:
 
-        return get_books_service(
+        return get_book(
             limit=limit,
             conn=conn
         )
@@ -60,7 +59,7 @@ def search_books(
 ):
     try:
 
-        return search_books_service(
+        return search_books(
             q=q,
             author=author,
             min_rating=min_rating,
@@ -95,7 +94,7 @@ def get_book(
 
     try:
 
-        book = get_specific_book_service(
+        book = get_specific_book(
             work_key=work_key,
             conn=conn
         )

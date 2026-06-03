@@ -1,7 +1,7 @@
 from psycopg2.extras import RealDictCursor # By default, psycopg2 returns tuples
 
 # display first n books
-def get_books_service(
+def get_book(
         limit: int = 10,
         conn=None
 ):
@@ -49,7 +49,7 @@ def get_books_service(
         cursor.close()
 
 
-def search_books_service(
+def search_books(
         q: str | None = None, # None = None -> this is optional, allow request without this parameter required
         author: str | None = None,
         min_rating: float | None = None,
@@ -177,7 +177,7 @@ def search_books_service(
         cursor.close()
 
 
-def get_specific_book_service(
+def get_specific_book(
         work_key: str,
         conn=None
 ):

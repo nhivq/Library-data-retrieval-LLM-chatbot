@@ -4,7 +4,7 @@ from fastapi import (
     Depends
 )
 from app.database.connection import get_db
-from app.services.author_service import get_author_service
+from app.services.author_service import get_author
 
 router=APIRouter()
 
@@ -16,7 +16,7 @@ def get_author(
 ):
     try:
 
-        return get_author_service(
+        return get_author(
             author_key=author_key,
             conn=conn
         )
