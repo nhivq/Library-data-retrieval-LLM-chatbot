@@ -1,8 +1,8 @@
 import asyncio
 import json
 
-from app.mcp_integration.llm.setup import client, llm
-from app.mcp_integration.llm.tool_converter import mcp_tool_to_openrouter
+from app.llm.setup import client, llm
+from app.llm.tool_converter import mcp_tool_to_openrouter
 
 
 # Default question for manual local testing.
