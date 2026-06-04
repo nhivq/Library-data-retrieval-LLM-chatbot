@@ -5,10 +5,11 @@ from app.llm.setup import client, llm
 from app.llm.tool_converter import mcp_tool_to_openrouter
 
 
-# Default question for manual local testing.
-DEFAULT_QUESTION = "Find books written by P. Grandcoing and then tell me about the author."
+# ---------- Local Testing ----------
+DEFAULT_QUESTION = "Tell me about author P. Grandcoing."
 
 
+# ---------- Agent ----------
 async def ask_agent(question: str) -> str:
     # Main flow:
     # 1. Ask MCP what tools exist.
@@ -18,21 +19,27 @@ async def ask_agent(question: str) -> str:
     # 5. Return the final answer as a string.
     async with client:
 
-        # Step 1: ask the MCP server which tools are available.
+        # Safety protection
+        MAX_ITERATIONS = 10
+        iteration = 0
+
+        # Get MCP tools
         mcp_tools = await client.list_tools()
 
-        # Step 2: convert MCP tool definitions into the format OpenRouter expects.
         openrouter_tools = [
             mcp_tool_to_openrouter(tool)
             for tool in mcp_tools
         ]
 
-        # First LLM call: the model decides whether it can answer directly
-        # or whether it should call one of the tools.
+        # Conversation History
         messages = [
             {
                 "role": "system",
-                "content": "You are a helpful book assistant."
+                "content": (
+                    "You are a helpful book assistant. "
+                    "Use available tools whenever needed. "
+                    "You may call multiple tools before answering."
+                )
             },
             {
                 "role": "user",
@@ -40,81 +47,136 @@ async def ask_agent(question: str) -> str:
             }
         ]
 
+        # ReAct Loop
         while True:
 
+            iteration += 1
+
+            if iteration > MAX_ITERATIONS:
+
+                return "Maximum tool iterations reached"
+
+            # Ask LLM what to do next
             response = llm.chat.completions.create(
                 model="openai/gpt-4o-mini",
                 messages=messages,
                 tools=openrouter_tools
             )
 
-            # message is the model's first response.
-            # It may contain either normal text or tool call instructions.
             message = response.choices[0].message
 
-            print("\n=== NEW ITERATION ===")
             print(message.tool_calls)
 
+            # No tool calls -> final answer
             if not message.tool_calls:
 
                 return message.content
 
-            # For now, handle the first requested tool call only.
-            tool_call = message.tool_calls[0]
+            # Execute all tool calls
+            for tool_call in message.tool_calls:
 
-            # Name of the MCP tool the model wants to run.
-            tool_name = tool_call.function.name
+                # Name of the MCP tool the model wants to run.
+                tool_name = tool_call.function.name
 
-            # Tool arguments come back as a JSON string, so convert them to a dict.
-            arguments = json.loads(
-                tool_call.function.arguments
-            )
-
-            # Execute the MCP tool with the arguments chosen by the model.
-            tool_result = await client.call_tool(
-                tool_name,
-                arguments
-            )
-
-            if not tool_result.content:
-                return (
-                    f"The tool '{tool_name}' returned no content for "
-                    f"arguments {arguments}."
+                # Tool arguments come back as a JSON string, so convert them to a dict.
+                arguments = json.loads(
+                    tool_call.function.arguments
                 )
-            
-            # MCP returns text content, so extract that text before using it again.
-            # In this project, that text is a JSON string.
-            tool_text = tool_result.content[0].text
 
-            # Convert the JSON string into Python data for debugging/inspection.
-            tool_data = json.loads(
-                tool_text
-            )
+                print("\nTool:")
+                print(tool_name)
 
-            print("\nParsed Tool Data:")
-            print(type(tool_data))
-            print(tool_data)
+                print("\nArguments:")
+                print(arguments)
 
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content":
-                        f"Called tool {tool_name} with {arguments}"
-                }
-            )
+                try:
 
-            messages.append(
-                {
-                    "role": "user",
-                    "content":
-                        f"Tool returned:\n{tool_text}"
-                }
-            )
+                    # Execute MCP Tool
+                    tool_result = await client.call_tool(
+                        tool_name,
+                        arguments
+                    )
+
+                    print("\nTool Result:")
+                    print(tool_result)
+
+                    if not tool_result.content:
+                        tool_text = (
+                            f"Tool {tool_name} "
+                            f"returned no content."
+                        )
+
+                    else:
+
+                        tool_text = (
+                            tool_result.content[0].text
+                        )
+
+                    # Debugging only
+                    try:
+
+                        # Convert the JSON string into Python data for debugging/inspection.
+                        tool_data = json.loads(
+                            tool_text
+                        )
+
+                        print("\nParsed Tool Data:")
+                        print(type(tool_data))
+                        print(tool_data)
+
+                    except Exception:
+
+                        print(
+                            "\nTool result is not JSON."
+                        )
+
+                    # Feed tool result back to LLM
+
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content":(
+                                f"Called tool "
+                                f"{tool_name} "
+                                f"with arguments "
+                                f"{arguments}"
+                            )
+                        }
+                    )
+
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content":(
+                                f"Tool returned:\n"
+                                f"{tool_text}"
+                                )
+                        }
+                    )
+
+                except Exception as e:
+                    print("\nTool Error:")
+                    print(e)
+
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Tool {tool_name} "
+                                f"failed with error:\n"
+                                f"{str(e)}"
+                            )
+                        }
+                    )
 
 
+# Local Test
 async def main(question: str = DEFAULT_QUESTION):
+
     # This is only for local testing from terminal.
     answer = await ask_agent(question)
+
+    print("\n=== FINAL ANSWER ===\n")
     print(answer)
 
 
