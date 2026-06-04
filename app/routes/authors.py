@@ -10,6 +10,7 @@ from app.services import author_service
 
 router=APIRouter()
 
+
 # ---------- Get Authors ----------
 @router.get("/authors", response_model=list[AuthorResponse])
 def get_authors(

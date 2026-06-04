@@ -1,0 +1,184 @@
+// ── Config ────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:8000';
+
+// ── Storage helpers ───────────────────────────────────────────
+const Auth = {
+  save:   (userId) => sessionStorage.setItem('user_id', userId),
+  get:    ()       => sessionStorage.getItem('user_id'),
+  clear:  ()       => sessionStorage.removeItem('user_id'),
+  isLoggedIn: ()   => !!sessionStorage.getItem('user_id'),
+};
+
+// ── API service ───────────────────────────────────────────────
+// When you add JWT later:
+//   1. Save token: sessionStorage.setItem('token', data.access_token)
+//   2. Add header: 'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+const ApiService = {
+
+  async login(username, password) {
+    const res = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.message || 'Login failed.');
+    return data; // { message, user_id }
+  },
+
+  async register(username, email, password) {
+    const res = await fetch(`${API_BASE}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.message || 'Registration failed.');
+    return data; // { message }
+  },
+
+};
+
+// ── UI helpers ────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  const ok = document.getElementById('successMsg');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  ok.classList.remove('show');
+}
+
+function showSuccess(msg) {
+  const el = document.getElementById('successMsg');
+  const err = document.getElementById('errorMsg');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  err.classList.remove('show');
+}
+
+function clearAlerts() {
+  document.getElementById('errorMsg')?.classList.remove('show');
+  document.getElementById('successMsg')?.classList.remove('show');
+}
+
+function setLoading(btn, loading) {
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Please wait…' : btn.dataset.label;
+}
+
+function markInvalid(id) {
+  document.getElementById(id)?.classList.add('invalid');
+}
+
+function clearInvalid() {
+  document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+}
+
+// ── Auth guard (call at top of chat.html) ─────────────────────
+function requireAuth() {
+  const onLoginPage = window.location.pathname.endsWith('login.html');
+  const onRegisterPage = window.location.pathname.endsWith('register.html');
+  if (!Auth.isLoggedIn() && !onLoginPage && !onRegisterPage) {
+    window.location.replace('login.html');
+  }
+}
+
+// ── Logout ────────────────────────────────────────────────────
+function logout() {
+  Auth.clear();
+  window.location.href = 'login.html';
+}
+
+// ── Login page init ───────────────────────────────────────────
+function initLogin() {
+  // If already logged in, skip to chat
+  if (Auth.isLoggedIn()) {
+    window.location.href = 'chat.html';
+    return;
+  }
+
+  const form      = document.getElementById('loginForm');
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.dataset.label = 'Login';
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAlerts();
+    clearInvalid();
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    // Client-side validation
+    let hasError = false;
+    if (!username) { markInvalid('username'); hasError = true; }
+    if (!password) { markInvalid('password'); hasError = true; }
+    if (hasError) { showError('Please fill in all fields.'); return; }
+
+    setLoading(submitBtn, true);
+
+    try {
+      const data = await ApiService.login(username, password);
+      Auth.save(data.user_id);
+      window.location.href = 'chat.html';
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setLoading(submitBtn, false);
+    }
+  });
+}
+
+// ── Register page init ────────────────────────────────────────
+function initRegister() {
+  // If already logged in, skip to chat
+  if (Auth.isLoggedIn()) {
+    window.location.href = 'chat.html';
+    return;
+  }
+
+  const form      = document.getElementById('registerForm');
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.dataset.label = 'Register';
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAlerts();
+    clearInvalid();
+
+    const username        = document.getElementById('username').value.trim();
+    const email           = document.getElementById('email').value.trim();
+    const password        = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    // Client-side validation
+    let hasError = false;
+    if (!username)        { markInvalid('username');        hasError = true; }
+    if (!email)           { markInvalid('email');           hasError = true; }
+    if (!password)        { markInvalid('password');        hasError = true; }
+    if (!confirmPassword) { markInvalid('confirmPassword'); hasError = true; }
+
+    if (hasError) { showError('Please fill in all fields.'); return; }
+
+    if (password !== confirmPassword) {
+      markInvalid('password');
+      markInvalid('confirmPassword');
+      showError('Passwords do not match.');
+      return;
+    }
+
+    setLoading(submitBtn, true);
+
+    try {
+      await ApiService.register(username, email, password);
+      showSuccess('Account created! Redirecting to login…');
+      setTimeout(() => window.location.href = 'login.html', 1800);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setLoading(submitBtn, false);
+    }
+  });
+}

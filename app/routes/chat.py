@@ -9,3 +9,21 @@ from app.llm.llm_client import ask_agent
 
 
 router = APIRouter()
+
+
+@router.post(
+    "/chat",
+    response_model=ChatResponse
+)
+# using async because ask_agent() is already async def ask_agent(...)
+async def chat(
+    request: ChatRequest
+):
+
+    answer = await ask_agent(
+        request.message
+    )
+
+    return ChatResponse(
+        answer=answer
+    )

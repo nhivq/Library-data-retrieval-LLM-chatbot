@@ -1,0 +1,218 @@
+/* ── Reset & Root ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #fce8f0;
+  --surface:     #fdf6f0;
+  --border:      #e8a8c0;
+  --accent:      #d4487a;
+  --accent-dim:  #b03060;
+  --accent-hover:#e0205a;
+  --text:        #2d0f1e;
+  --text-muted:  #9a5070;
+  --input-bg:    #fff8fb;
+  --error-bg:    #fde8ee;
+  --error-text:  #b02050;
+  --success-bg:  #e8f5e8;
+  --success-text:#2d6e2d;
+  --radius:      12px;
+  --font-serif:  'Lora', Georgia, serif;
+  --font-mono:   'DM Mono', 'Courier New', monospace;
+  --shadow:      0 8px 32px rgba(180, 60, 100, 0.12);
+}
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Page layout ──────────────────────────────────────────── */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background:
+    radial-gradient(ellipse at 20% 20%, #f9c0d8 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 80%, #fde0ec 0%, transparent 55%),
+    var(--bg);
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow);
+}
+
+/* ── Brand ────────────────────────────────────────────────── */
+.auth-brand {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-brand-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.auth-brand-name {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .02em;
+}
+
+.auth-brand-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Heading ──────────────────────────────────────────────── */
+.auth-heading {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* ── Form ─────────────────────────────────────────────────── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.field input {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
+  width: 100%;
+}
+
+.field input::placeholder {
+  color: var(--text-muted);
+  opacity: .7;
+}
+
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(212, 72, 122, 0.12);
+}
+
+.field input.invalid {
+  border-color: var(--error-text);
+}
+
+/* ── Alerts ───────────────────────────────────────────────── */
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  display: none;
+}
+
+.alert.show { display: block; }
+
+.alert-error {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid #f0b0c0;
+}
+
+.alert-success {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid #a8d8a8;
+}
+
+/* ── Submit button ────────────────────────────────────────── */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 13px;
+  cursor: pointer;
+  transition: background .18s, transform .1s;
+  margin-top: 4px;
+  letter-spacing: .02em;
+}
+
+.btn-primary:hover    { background: var(--accent-hover); }
+.btn-primary:active   { transform: scale(.98); }
+
+.btn-primary:disabled {
+  background: #e8a8c0;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Footer link ──────────────────────────────────────────── */
+.auth-footer {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.auth-footer a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color .15s;
+}
+
+.auth-footer a:hover { color: var(--accent-hover); }
+
+/* ── Divider ──────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .auth-card { padding: 28px 22px 24px; }
+}

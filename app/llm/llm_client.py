@@ -6,7 +6,7 @@ from app.llm.tool_converter import mcp_tool_to_openrouter
 
 
 # ---------- Local Testing ----------
-DEFAULT_QUESTION = "Save bookmark /works/OL10000112W my user id is 4"
+DEFAULT_QUESTION = "Delete all bookmarks of user 4. Then, save bookmark /works/OL10000112W for user 4 and then show all user 4's bookmarks"
 
 
 # ---------- Agent ----------

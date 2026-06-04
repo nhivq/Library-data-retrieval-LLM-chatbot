@@ -5,6 +5,7 @@ from app.routes.books import router as books_router
 from app.routes.bookmarks import router as bookmarks_router
 from app.routes.authors import router as authors_router
 from app.routes.auth import router as auth_router
+from app.routes.chat import router as chat_router
 
 app = FastAPI()
 
@@ -38,6 +39,10 @@ app.include_router(
 
 app.include_router(
     auth_router
+)
+
+app.include_router(
+    chat_router
 )
 
 
