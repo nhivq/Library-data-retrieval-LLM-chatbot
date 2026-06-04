@@ -6,7 +6,7 @@ from app.llm.tool_converter import mcp_tool_to_openrouter
 
 
 # ---------- Local Testing ----------
-DEFAULT_QUESTION = "Tell me about author P. Grandcoing."
+DEFAULT_QUESTION = "Save bookmark /works/OL10000112W my user id is 4"
 
 
 # ---------- Agent ----------
@@ -65,6 +65,11 @@ async def ask_agent(question: str) -> str:
 
             message = response.choices[0].message
 
+            print("\n========================")
+            print(f"Iteration {iteration}")
+            print("========================")
+
+            print("\nTool Calls:")
             print(message.tool_calls)
 
             # No tool calls -> final answer
@@ -73,6 +78,7 @@ async def ask_agent(question: str) -> str:
                 return message.content
 
             # Execute all tool calls
+            executed_calls = set()
             for tool_call in message.tool_calls:
 
                 # Name of the MCP tool the model wants to run.
@@ -82,6 +88,17 @@ async def ask_agent(question: str) -> str:
                 arguments = json.loads(
                     tool_call.function.arguments
                 )
+
+                call_signature = (
+                    tool_name,
+                    json.dumps(arguments, sort_keys=True)
+                )
+
+                if call_signature in executed_calls:
+
+                    return (
+                        "Agent entered repeated tool loop."
+                    )
 
                 print("\nTool:")
                 print(tool_name)
@@ -97,6 +114,9 @@ async def ask_agent(question: str) -> str:
                         arguments
                     )
 
+                    # Store executed call signature
+                    executed_calls.add(call_signature)
+
                     print("\nTool Result:")
                     print(tool_result)
 
@@ -111,6 +131,18 @@ async def ask_agent(question: str) -> str:
                         tool_text = (
                             tool_result.content[0].text
                         )
+
+                    if tool_result.is_error:
+
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content":
+                                    f"Tool error:\n{tool_text}"
+                            }
+                        )
+
+                        continue
 
                     # Debugging only
                     try:
