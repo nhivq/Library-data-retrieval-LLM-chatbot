@@ -62,8 +62,7 @@ async def ask_agent(
             }
         )
 
-        print("\n=== MEMORY ===")
-        print(messages)
+        conversation_store[session_id] = messages.copy()
 
         # ReAct Loop
         while True:
@@ -85,6 +84,8 @@ async def ask_agent(
             )
 
             message = response.choices[0].message
+            print("\n=== MESSAGE ===")
+            print(message)
 
             print("\n========================")
             print(f"Iteration {iteration}")
@@ -101,6 +102,8 @@ async def ask_agent(
                         "content": message.content
                     }
                 )
+
+                conversation_store[session_id] = messages.copy()
 
                 progress.append("No tool calls were needed; returning final answer.")
                 return {
