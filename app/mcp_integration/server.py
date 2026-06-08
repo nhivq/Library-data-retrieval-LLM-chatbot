@@ -12,7 +12,7 @@ mcp = FastMCP("Book Retrieval MCP")
 # ---------- Book Tools ----------
 
 @mcp.tool(
-    description="Search books by title, author, rating and tag filters"
+    description="Search books by title, author, rating, and tag filters. Use this tool for any book lookup request and only return actual database results. When the user asks about author names or patterns, pass the author string to this tool. Do not invent books, authors, ratings, dates, or tags."
 )
 def search_books(
 q: str | None = None,
