@@ -8,7 +8,9 @@ from app.schemas.author_schemas import AuthorResponse
 from app.services import author_service
 
 
-router=APIRouter()
+router=APIRouter(
+    tags=["Authors"]
+)
 
 
 # ---------- Get Authors ----------

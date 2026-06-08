@@ -8,7 +8,9 @@ from app.database.connection import get_db
 from app.schemas.book_schemas import BookResponse
 from app.services import book_service
 
-router=APIRouter()
+router=APIRouter(
+    tags=["Books"]
+)
 
 # ---------- Get Books ----------
 # Path allows:

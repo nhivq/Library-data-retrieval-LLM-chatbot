@@ -7,7 +7,9 @@ from app.database.connection import get_db
 from app.schemas.bookmark_schemas import Bookmark
 from app.services import bookmark_service
 
-router=APIRouter()
+router=APIRouter(
+    tags=["Bookmarks"]
+)
 
 # ---------- Save Bookmark ----------
 @router.post("/bookmarks")

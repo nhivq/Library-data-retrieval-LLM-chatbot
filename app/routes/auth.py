@@ -7,7 +7,9 @@ from app.database.connection import get_db
 from app.schemas.user_schemas import RegisterRequest, LoginRequest
 from app.services import auth_service 
 
-router=APIRouter()
+router=APIRouter(
+    tags=["Authentication"]
+)
 
 # ---------- Register account ----------
 @router.post("/register")
