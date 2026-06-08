@@ -1,6 +1,10 @@
 from fastapi import APIRouter
-from app.llm.llm_client import conversation_store
-
+from app.database.connection import get_connection
+from app.services.conversation_service import (
+    get_messages,
+    delete_conversation,
+    get_all_conversations
+)
 
 router = APIRouter(
     prefix="/memory",
@@ -14,20 +18,29 @@ def get_memory(session_id: str):
     """
     Get the conversation history for a given session ID.
     """
-    return conversation_store.get(
-        session_id,
-        []
-    )
+    conn = get_connection()
+
+    try:
+        return get_messages(
+            session_id,
+            conn
+        )
+
+    finally:
+        conn.close()
 
 
 # ---------- View all sessions' memory ----------
 @router.get("/")
 def get_all_memory():
-    """
-    Get the conversation history for all sessions.
-    """
-    return conversation_store
 
+    conn = get_connection()
+
+    try:
+        return get_all_conversations(conn)
+
+    finally:
+        conn.close()
 
 # ---------- Clear a session's memory ----------
 @router.delete("/{session_id}")
@@ -35,8 +48,19 @@ def clear_memory(session_id: str):
     """
     Clear the conversation history for a given session ID.
     """
-    if session_id in conversation_store:
-        del conversation_store[session_id]
-        return {"message": f"Memory for session {session_id} cleared."}
-    else:
-        return {"message": f"No memory found for session {session_id}."}
+    conn = get_connection()
+
+    try:
+
+        delete_conversation(
+            session_id,
+            conn
+        )
+
+        return {
+            "message":
+                f"Memory for session {session_id} cleared."
+        }
+
+    finally:
+        conn.close()

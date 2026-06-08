@@ -1,14 +1,41 @@
 import asyncio
 import json
+import os
 import time
+
+
+"""Client that orchestrates LLM usage, tools, and conversation memory.
+
+This module is responsible for assembling tools from the MCP client,
+feeding them to the LLM, executing any requested tool calls, and
+maintaining a lightweight conversation store for interactive sessions.
+The main entrypoint for the agent loop is `ask_agent` which implements
+the ReAct-style loop: ask LLM -> run tools -> send tool outputs back -> repeat.
+"""
 
 from app.llm.setup import client, llm
 from app.llm.tool_converter import mcp_tool_to_openrouter
-from app.llm.memory import conversation_store
+from app.services.conversation_service import (
+    initialize_conversation,
+    get_messages,
+    save_message
+)
+from app.database.connection import get_connection
 
 
 # ---------- Local Testing ----------
-DEFAULT_QUESTION = "Delete all bookmarks of user 4. Then, save bookmark /works/OL10000112W for user 4 and then show all user 4's bookmarks"
+DEFAULT_QUESTION = (
+    "Delete all bookmarks of user 4. Then, save bookmark /works/OL10000112W "
+    "for user 4 and then show all user 4's bookmarks"
+)
+
+
+SYSTEM_PROMPT = (
+    "You are a helpful book assistant with access to the app's real book data. "
+    "For any question about books, authors, ratings, tags, publication dates, bookmarks, or search results, use the available tools instead of answering from your own knowledge. "
+    "If you cannot find an answer in the tool output, say that the data is unavailable rather than inventing book titles, authors, ratings, or dates. "
+    "Do not hallucinate or fabricate books."
+)
 
 
 # ---------- Agent ----------
@@ -24,14 +51,15 @@ async def ask_agent(
     # 5. Return the final answer with progress metadata.
     async with client:
 
-        # Safety protection
+        # Safety protection to avoid infinite tool loops
         MAX_ITERATIONS = 10
         iteration = 0
         progress = []
 
         progress.append("Assembling the AI agent and preparing tools...")
 
-        # Get MCP tools
+        # Discover available MCP tools and convert them to the format
+        # expected by the local LLM client (OpenRouter-like format).
         mcp_tools = await client.list_tools()
 
         openrouter_tools = [
@@ -39,212 +67,228 @@ async def ask_agent(
             for tool in mcp_tools
         ]
 
-        # Conversation History - Load existing or create new
-        if session_id not in conversation_store:
-            conversation_store[session_id] = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a helpful book assistant with access to the app's real book data. "
-                        "For any question about books, authors, ratings, tags, publication dates, bookmarks, or search results, use the available tools instead of answering from your own knowledge. "
-                        "If you cannot find an answer in the tool output, say that the data is unavailable rather than inventing book titles, authors, ratings, or dates. "
-                        "Do not hallucinate or fabricate books."
-                    )
-                }
-            ]
+        # Conversation History - Load existing conversation from the
+        # in-memory store or initialize a new one with a system prompt
+        print("\n=== SESSION ID ===")
+        print(session_id)
 
-        # Load existing history and append current question
-        messages = conversation_store[session_id].copy()
-        messages.append(
-            {
-                "role": "user",
-                "content": question
-            }
-        )
+        conn = get_connection()
 
-        conversation_store[session_id] = messages.copy()
+        try:
 
-        # ReAct Loop
-        while True:
-
-            iteration += 1
-
-            if iteration > MAX_ITERATIONS:
-                progress.append("Stopped after maximum tool iterations.")
-                return {
-                    "answer": "Maximum tool iterations reached",
-                    "progress": progress
-                }
-
-            # Ask LLM what to do next
-            response = llm.chat.completions.create(
-                model="openai/gpt-4o-mini",
-                messages=messages,
-                tools=openrouter_tools
+            initialize_conversation(
+                session_id,
+                SYSTEM_PROMPT,
+                conn
             )
 
-            message = response.choices[0].message
-            print("\n=== MESSAGE ===")
-            print(message)
+            # Load persisted messages from the DB-backed store and append the
+            # current user question, then persist the user message.
+            save_message(
+                session_id,
+                "user",
+                question,
+                conn
+            )
 
-            print("\n========================")
-            print(f"Iteration {iteration}")
-            print("========================")
+            messages = get_messages(
+                session_id,
+                conn
+            )
 
-            print("\nTool Calls:")
-            print(message.tool_calls)
+            # ReAct Loop: ask the LLM for the next action, run tools if requested
+            # and feed results back until a final answer (no tool calls) is produced
+            while True:
 
-            # No tool calls -> final answer
-            if not message.tool_calls:
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": message.content
-                    }
-                )
+                iteration += 1
 
-                conversation_store[session_id] = messages.copy()
-
-                progress.append("No tool calls were needed; returning final answer.")
-                return {
-                    "answer": message.content,
-                    "progress": progress
-                }
-
-            # Execute all tool calls
-            executed_calls = set()
-            for tool_call in message.tool_calls:
-
-                # Name of the MCP tool the model wants to run.
-                tool_name = tool_call.function.name
-
-                # Tool arguments come back as a JSON string, so convert them to a dict.
-                arguments = json.loads(
-                    tool_call.function.arguments
-                )
-
-                call_signature = (
-                    tool_name,
-                    json.dumps(arguments, sort_keys=True)
-                )
-
-                if call_signature in executed_calls:
-                    progress.append("Detected repeated tool loop and stopped.")
+                if iteration > MAX_ITERATIONS:
+                    progress.append("Stopped after maximum tool iterations.")
                     return {
-                        "answer": "Agent entered repeated tool loop.",
+                        "answer": "Maximum tool iterations reached",
                         "progress": progress
                     }
 
-                print("\nTool:")
-                print(tool_name)
+                # Ask LLM what to do next (it may request tools)
+                response = llm.chat.completions.create(
+                    model="openai/gpt-4o-mini",
+                    messages=messages,
+                    tools=openrouter_tools
+                )
 
-                print("\nArguments:")
-                print(arguments)
+                message = response.choices[0].message
+                print("\n=== MESSAGE ===")
+                print(message)
 
-                try:
-                    progress.append(f"Calling tool {tool_name}...")
-                    tool_start = time.perf_counter()
+                print("\n========================")
+                print(f"Iteration {iteration}")
+                print("========================")
 
-                    # Execute MCP Tool
-                    tool_result = await client.call_tool(
-                        tool_name,
-                        arguments
-                    )
-                    tool_elapsed = round((time.perf_counter() - tool_start) * 1000)
-                    progress.append(f"Tool {tool_name} completed in {tool_elapsed}ms.")
+                print("\nTool Calls:")
+                print(message.tool_calls)
 
-                    # Store executed call signature
-                    executed_calls.add(call_signature)
-
-                    print("\nTool Result:")
-                    print(tool_result)
-
-                    if not tool_result.content:
-                        tool_text = (
-                            f"Tool {tool_name} "
-                            f"returned no content."
-                        )
-
-                    else:
-
-                        tool_text = (
-                            tool_result.content[0].text
-                        )
-
-                    if tool_result.is_error:
-                        messages.append(
-                            {
-                                "role": "user",
-                                "content":
-                                    f"Tool error:\n{tool_text}"
-                            }
-                        )
-                        progress.append(f"Tool {tool_name} returned an error.")
-
-                        # Persist error state to store
-                        conversation_store[session_id] = messages.copy()
-
-                        continue
-
-                    # Debugging only
-                    try:
-
-                        # Convert the JSON string into Python data for debugging/inspection.
-                        tool_data = json.loads(
-                            tool_text
-                        )
-
-                        print("\nParsed Tool Data:")
-                        print(type(tool_data))
-                        print(tool_data)
-
-                    except Exception:
-
-                        print(
-                            "\nTool result is not JSON."
-                        )
-
-                    # Feed tool result back to LLM
-
+                # If the LLM returned no tool calls, it's the final assistant answer
+                if not message.tool_calls:
                     messages.append(
                         {
                             "role": "assistant",
-                            "content":(
-                                f"Called tool "
-                                f"{tool_name} "
-                                f"with arguments "
-                                f"{arguments}"
-                            )
+                            "content": message.content
                         }
                     )
 
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content":(
-                                f"Tool returned:\n"
-                                f"{tool_text}"
-                                )
-                        }
+                    progress.append("No tool calls were needed; returning final answer.")
+
+                    save_message(
+                        session_id,
+                        "assistant",
+                        message.content,
+                        conn
+                    )
+                    
+                    return {
+                        "answer": message.content,
+                        "progress": progress
+                    }
+
+                # Execute all tool calls that the model requested this turn.
+                # Track executed call signatures to detect repeated loops.
+                executed_calls = set()
+                for tool_call in message.tool_calls:
+
+                    # Name of the MCP tool the model wants to run.
+                    tool_name = tool_call.function.name
+
+                    # Tool arguments come back as a JSON string, so convert them to a dict.
+                    arguments = json.loads(
+                        tool_call.function.arguments
                     )
 
-                    # Persist updated conversation to store
-                    conversation_store[session_id] = messages.copy()
+                    call_signature = (
+                        tool_name,
+                        json.dumps(arguments, sort_keys=True)
+                    )
 
-                except Exception as e:
-                    print("\nTool Error:")
-                    print(e)
+                    # If we've already executed the exact same call signature,
+                    # the agent is stuck in a loop and we should stop.
+                    if call_signature in executed_calls:
+                        progress.append("Detected repeated tool loop and stopped.")
+                        return {
+                            "answer": "Agent entered repeated tool loop.",
+                            "progress": progress
+                        }
 
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": (
+                    print("\nTool:")
+                    print(tool_name)
+
+                    print("\nArguments:")
+                    print(arguments)
+
+                    try:
+                        progress.append(f"Calling tool {tool_name}...")
+                        tool_start = time.perf_counter()
+
+                        # Execute MCP Tool via the client
+                        tool_result = await client.call_tool(
+                            tool_name,
+                            arguments
+                        )
+                        tool_elapsed = round((time.perf_counter() - tool_start) * 1000)
+                        progress.append(f"Tool {tool_name} completed in {tool_elapsed}ms.")
+
+                        # Store executed call signature
+                        executed_calls.add(call_signature)
+
+                        print("\nTool Result:")
+                        print(tool_result)
+
+                        if not tool_result.content:
+                            tool_text = (
                                 f"Tool {tool_name} "
-                                f"failed with error:\n"
-                                f"{str(e)}"
+                                f"returned no content."
                             )
-                        }
-                    )
+
+                        else:
+
+                            tool_text = (
+                                tool_result.content[0].text
+                            )
+
+                        # If the tool reported an error, append an explanatory
+                        # user message to the conversation so the LLM can react.
+                        if tool_result.is_error:
+                            messages.append(
+                                {
+                                    "role": "user",
+                                    "content":
+                                        f"Tool error:\n{tool_text}"
+                                }
+                            )
+                            progress.append(f"Tool {tool_name} returned an error.")
+
+                            continue
+
+                        # Debugging: attempt to parse JSON tool output for inspection
+                        try:
+
+                            # Convert the JSON string into Python data for debugging/inspection.
+                            tool_data = json.loads(
+                                tool_text
+                            )
+
+                            print("\nParsed Tool Data:")
+                            print(type(tool_data))
+                            print(tool_data)
+
+                        except Exception:
+
+                            print(
+                                "\nTool result is not JSON."
+                            )
+
+                        # Feed tool result back to LLM as both assistant and user
+                        # messages so the model can incorporate the result in the next step.
+                        messages.append(
+                            {
+                                "role": "assistant",
+                                "content":(
+                                    f"Called tool "
+                                    f"{tool_name} "
+                                    f"with arguments "
+                                    f"{arguments}"
+                                )
+                            }
+                        )
+
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content":(
+                                    f"Tool returned:\n"
+                                    f"{tool_text}"
+                                    )
+                            }
+                        )
+
+                    except Exception as e:
+                        # In case of an exception while executing a tool, append
+                        # the error so the LLM can handle the failure path.
+                        print("\nTool Error:")
+                        print(e)
+
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    f"Tool {tool_name} "
+                                    f"failed with error:\n"
+                                    f"{str(e)}"
+                                )
+                            }
+                        )
+        
+        finally:
+
+            conn.close()
 
 
 # Local Test
