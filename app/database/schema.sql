@@ -71,6 +71,40 @@ CREATE TABLE IF NOT EXISTS book_authors(
 
 
 -- =========================
+-- CONVERSATIONS TABLE
+-- =========================
+CREATE TABLE conversations (
+
+    id SERIAL PRIMARY KEY,
+
+    session_id VARCHAR(255) UNIQUE NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+-- =========================
+-- MESSAGES TABLE
+-- =========================
+CREATE TABLE messages (
+    
+    id SERIAL PRIMARY KEY,
+
+    conversation_id INTEGER NOT NULL
+        REFERENCES conversations(id)
+        ON DELETE CASCADE,
+
+    role VARCHAR(50) NOT NULL,
+
+    content TEXT NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+-- =========================
 -- BOOKMARKS TABLE
 -- =========================
 
