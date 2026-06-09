@@ -18,6 +18,5 @@ databases:
   - name: book-db
     databaseName: book_db
     user: book_user
-    engine: postgres
     plan: free
     
