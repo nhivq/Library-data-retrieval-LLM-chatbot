@@ -1,5 +1,5 @@
 // ── Config ────────────────────────────────────────────────────
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://library-data-retrieval-llm-chatbot-619h.onrender.com";
 
 // ── Storage helpers ───────────────────────────────────────────
 const Auth = {
