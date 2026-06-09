@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter
 
 from app.schemas.chat_schema import ChatRequest, ChatResponse
@@ -17,10 +19,19 @@ router = APIRouter(
 async def chat(
     request: ChatRequest
 ):
+    start = time.perf_counter()
+
     result = await ask_agent(
         request.message,
         request.session_id or "web-session"
     )
+
+    print(
+        "TOTAL REQUEST:",
+        round((time.perf_counter() - start) * 1000),
+        "ms"
+    )
+
     return ChatResponse(
         answer=result["answer"],
         progress=result.get("progress", [])

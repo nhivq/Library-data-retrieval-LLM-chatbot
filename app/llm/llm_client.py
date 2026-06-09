@@ -63,6 +63,20 @@ def summarize_tool_result(data):
 
     return "Tool executed successfully"
 
+openrouter_tools_cache = None
+
+
+async def get_openrouter_tools():
+    global openrouter_tools_cache
+    if openrouter_tools_cache is None:
+        mcp_tools = await client.list_tools()
+        openrouter_tools_cache = [
+            mcp_tool_to_openrouter(tool)
+            for tool in mcp_tools
+        ]
+    return openrouter_tools_cache
+
+
 # ---------- Local Testing ----------
 DEFAULT_QUESTION = (
     "Delete all bookmarks of user 4. Then, save bookmark /works/OL10000112W "
@@ -100,12 +114,15 @@ async def ask_agent(
 
         # Discover available MCP tools and convert them to the format
         # expected by the local LLM client (OpenRouter-like format).
-        mcp_tools = await client.list_tools()
-
-        openrouter_tools = [
-            mcp_tool_to_openrouter(tool)
-            for tool in mcp_tools
-        ]
+        start = time.perf_counter()
+        openrouter_tools = await get_openrouter_tools()
+        print(
+            "list_tools:",
+            round((time.perf_counter() - start) * 1000),
+            "ms",
+            "tools:",
+            len(openrouter_tools)
+        )
 
         # Conversation History - Load existing conversation from the
         # in-memory store or initialize a new one with a system prompt
@@ -131,9 +148,17 @@ async def ask_agent(
                 conn
             )
 
+            start = time.perf_counter()
             messages = get_messages(
                 session_id,
                 conn
+            )
+            print(
+                "load_messages:",
+                round((time.perf_counter() - start) * 1000),
+                "ms",
+                "message count:",
+                len(messages)
             )
 
             # ReAct Loop: ask the LLM for the next action, run tools if requested
@@ -149,10 +174,16 @@ async def ask_agent(
                     }
 
                 # Ask LLM what to do next (it may request tools)
+                start = time.perf_counter()
                 response = llm.chat.completions.create(
                     model="openai/gpt-4o-mini",
                     messages=messages,
                     tools=openrouter_tools
+                )
+                print(
+                    "llm_call:",
+                    round((time.perf_counter() - start) * 1000),
+                    "ms"
                 )
 
                 message = response.choices[0].message
