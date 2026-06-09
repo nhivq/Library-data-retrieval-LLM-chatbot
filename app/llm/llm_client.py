@@ -143,7 +143,6 @@ async def ask_agent(
                 iteration += 1
 
                 if iteration > MAX_ITERATIONS:
-                    progress.append("Stopped after maximum tool iterations.")
                     return {
                         "answer": "Maximum tool iterations reached",
                         "progress": progress
@@ -175,8 +174,6 @@ async def ask_agent(
                             "content": message.content
                         }
                     )
-
-                    progress.append("No tool calls were needed; returning final answer.")
 
                     save_message(
                         session_id,
@@ -211,7 +208,6 @@ async def ask_agent(
                     # If we've already executed the exact same call signature,
                     # the agent is stuck in a loop and we should stop.
                     if call_signature in executed_calls:
-                        progress.append("Detected repeated tool loop and stopped.")
                         return {
                             "answer": "Agent entered repeated tool loop.",
                             "progress": progress
@@ -224,7 +220,6 @@ async def ask_agent(
                     print(arguments)
 
                     try:
-                        progress.append(f"Calling tool {tool_name}...")
                         tool_start = time.perf_counter()
 
                         # Execute MCP Tool via the client
@@ -233,7 +228,6 @@ async def ask_agent(
                             arguments
                         )
                         tool_elapsed = round((time.perf_counter() - tool_start) * 1000)
-                        progress.append(f"Tool {tool_name} completed in {tool_elapsed}ms.")
 
                         # Store executed call signature
                         executed_calls.add(call_signature)
