@@ -174,6 +174,7 @@ async def ask_agent(
                     }
 
                 # Ask LLM what to do next (it may request tools)
+                print("MODEL:", "openai/gpt-4o-mini")
                 start = time.perf_counter()
                 response = llm.chat.completions.create(
                     model="openai/gpt-4o-mini",
