@@ -80,17 +80,17 @@ function clearInvalid() {
 
 // ── Auth guard (call at top of chat.html) ─────────────────────
 function requireAuth() {
-  const onLoginPage = window.location.pathname.endsWith("login.html");
+  const onLoginPage = window.location.pathname.endsWith("index.html");
   const onRegisterPage = window.location.pathname.endsWith("register.html");
   if (!Auth.isLoggedIn() && !onLoginPage && !onRegisterPage) {
-    window.location.replace("login.html");
+    window.location.replace("index.html");
   }
 }
 
 // ── Logout ────────────────────────────────────────────────────
 function logout() {
   Auth.clear();
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 }
 
 // ── Login page init ───────────────────────────────────────────
@@ -200,7 +200,7 @@ function initRegister() {
     try {
       await ApiService.register(username, email, password);
       showSuccess("Account created! Redirecting to login…");
-      setTimeout(() => (window.location.href = "login.html"), 1800);
+      setTimeout(() => (window.location.href = "index.html"), 1800);
     } catch (err) {
       showError(err.message);
     } finally {
