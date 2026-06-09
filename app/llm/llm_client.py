@@ -160,6 +160,10 @@ async def ask_agent(
                 "message count:",
                 len(messages)
             )
+            print(
+                "Approx prompt chars:",
+                len(json.dumps(messages))
+            )
 
             # ReAct Loop: ask the LLM for the next action, run tools if requested
             # and feed results back until a final answer (no tool calls) is produced
