@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import time
+import requests
 
 
 """Client that orchestrates LLM usage, tools, and conversation memory.
@@ -106,6 +107,21 @@ async def ask_agent(
     # 5. Return the final answer with progress metadata.
     async with client:
 
+        start = time.perf_counter()
+
+        response = requests.get(
+            "https://openrouter.ai/api/v1/models"
+        )
+
+        print(
+            "OpenRouter ping:",
+            round(
+                (time.perf_counter() - start)
+                * 1000
+            ),
+            "ms"
+        )
+
         # Safety protection to avoid infinite tool loops
         MAX_ITERATIONS = 10
         iteration = 0
@@ -180,11 +196,13 @@ async def ask_agent(
                 # Ask LLM what to do next (it may request tools)
                 print("MODEL:", "openai/gpt-4o-mini")
                 start = time.perf_counter()
+                print("Sending request to OpenRouter...")
                 response = llm.chat.completions.create(
                     model="openai/gpt-4o-mini",
                     messages=messages,
                     tools=openrouter_tools
                 )
+                print("Received response from OpenRouter")
                 print(
                     "llm_call:",
                     round((time.perf_counter() - start) * 1000),
