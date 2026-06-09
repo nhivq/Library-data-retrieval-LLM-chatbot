@@ -356,6 +356,13 @@ html, body {
   padding-left: 18px;
 }
 
+/* ── Progress steps ──────────────────────────────────────── */
+.progress-step {
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
 /* ── Thinking ─────────────────────────────────────────────── */
 .thinking .msg-bubble {
   color: var(--text-muted);

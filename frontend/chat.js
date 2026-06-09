@@ -44,6 +44,7 @@ async function handleSend() {
 
   appendMessage('user', text);
   const thinkingRow = appendThinking();
+  const stopTimer = startProgressTimer(thinkingRow);
 
   try {
     const response = await fetch(`${API_BASE}/chat`, {
@@ -58,7 +59,11 @@ async function handleSend() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const data = await response.json();
-    const answer = data.answer ?? 'No response received.';
+    const answer   = data.answer   ?? 'No response received.';
+    const progress = data.progress ?? [];
+
+    // Stop timer, flash through the real progress steps, then show answer
+    await stopTimer(progress);
     replaceThinking(thinkingRow, answer, false);
 
     // Save this exchange to conversation history
@@ -162,6 +167,48 @@ function appendMessage(role, text) {
   chatArea.appendChild(row);
   scrollToBottom();
   return row;
+}
+
+// ── Live elapsed timer while waiting for backend ─────────────
+// Returns a stop function — call stop(steps) once response arrives
+// to swap the timer out for the real progress steps briefly,
+// then chat.js calls replaceThinking with the final answer.
+function startProgressTimer(row) {
+  const bubble = row.querySelector('.msg-bubble');
+  const start  = Date.now();
+
+  const interval = setInterval(() => {
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    bubble.innerHTML =
+      `<span class="progress-step">Thinking… ${elapsed}s</span>` +
+      `<span class="dots"><span></span><span></span><span></span></span>`;
+  }, 100);
+
+  // Returns a promise that shows each step for 600ms then resolves
+  return function stop(steps) {
+    clearInterval(interval);
+    return new Promise(resolve => {
+      if (!steps || steps.length === 0) { resolve(); return; }
+      let i = 0;
+      function showNext() {
+        if (i >= steps.length) { resolve(); return; }
+        bubble.innerHTML =
+          `<span class="progress-step">${escapeHtml(steps[i])}</span>` +
+          `<span class="dots"><span></span><span></span><span></span></span>`;
+        i++;
+        setTimeout(showNext, 600);
+      }
+      showNext();
+    });
+  };
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function appendThinking() {
