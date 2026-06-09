@@ -32,6 +32,12 @@ Install packages:
 pip install -r requirements.txt
 ```
 
+Create a local .env file:
+```bash
+cp .env.example .env
+```
+Set your `OPENROUTER_API_KEY` in `.env` before running the app.
+
 Create database
 ```bash
 createdb -U postgres book_db
@@ -43,7 +49,7 @@ psql -U postgres -d book_db -f database/schema.sql
 
 Import data:
 ```bash
-python scripts/import_books.py
+python script/import_books.py
 ```
 
 Run project:
@@ -65,3 +71,18 @@ HTTP server
 ```text
 http://10.6.200.83:8080/
 ```
+
+## Deploying on Render
+
+1. Add a Render web service with the repository.
+2. Set the following env vars in Render:
+   - `OPENROUTER_API_KEY`
+   - `DATABASE_URL`
+3. Use this build command:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Use this start command:
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port $PORT
+   ```

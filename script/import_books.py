@@ -1,15 +1,24 @@
 import json
+import os
 import psycopg2
+from dotenv import load_dotenv
 from psycopg2.extras import execute_batch
 
+load_dotenv()
+
 # Connect to PostgreSQL
-conn = psycopg2.connect(
-    dbname="book_db",
-    user="book_user",
-    password="123456",
-    host="localhost",
-    port="5432"
-)
+database_url = os.getenv("DATABASE_URL")
+
+if database_url:
+    conn = psycopg2.connect(database_url)
+else:
+    conn = psycopg2.connect(
+        dbname=os.getenv("POSTGRES_DB", "book_db"),
+        user=os.getenv("POSTGRES_USER", "book_user"),
+        password=os.getenv("POSTGRES_PASSWORD", "123456"),
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        port=os.getenv("POSTGRES_PORT", "5432")
+    )
 
 # Open a cursor to perform db operations
 cur = conn.cursor()

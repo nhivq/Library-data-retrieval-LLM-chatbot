@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: library-data-retrieval-llm-chatbot
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    autoDeploy: true
+    envVars:
+      - key: OPENROUTER_API_KEY
+        fromSecret: OPENROUTER_API_KEY
+      - key: DATABASE_URL
+        fromDatabase: 
+          name: book-db
+          property: connectionString
+
+databases:
+  - name: book-db
+    databaseName: book_db
+    user: book_user
+    engine: postgres
+    plan: free
+    

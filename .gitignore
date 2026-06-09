@@ -26,5 +26,3 @@ venv/
 dist/
 build/
 
-# Jupyter
-.ipynb_checkpoints/
