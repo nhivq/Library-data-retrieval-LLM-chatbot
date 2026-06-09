@@ -356,11 +356,192 @@ html, body {
   padding-left: 18px;
 }
 
-/* ── Progress steps ──────────────────────────────────────── */
-.progress-step {
-  font-style: italic;
+/* ── Thinking state ───────────────────────────────────────── */
+.thinking-label {
   color: var(--text-muted);
-  font-size: 13.5px;
+  font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thinking-timer {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--border);
+  margin-left: 8px;
+}
+
+/* ── Agent Activity Panel ─────────────────────────────────── */
+.activity-panel {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  width: 100%;
+  text-align: left;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .05em;
+  transition: color .15s;
+}
+.activity-header:hover { color: var(--accent); }
+
+.activity-chevron {
+  font-size: 9px;
+  color: var(--text-muted);
+  transition: color .15s;
+  flex-shrink: 0;
+}
+
+.activity-title {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 500;
+}
+
+.activity-meta {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--border);
+  white-space: nowrap;
+}
+
+/* Body — hidden by default, shown when .open */
+.activity-body {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+.activity-panel.open .activity-body {
+  display: flex;
+}
+
+/* ── Individual step ──────────────────────────────────────── */
+.activity-step {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition: border-color .15s;
+}
+.activity-step:hover,
+.activity-step.step-open {
+  border-color: var(--border);
+}
+
+.step-header {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto 14px;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 7px 8px;
+  text-align: left;
+  border-radius: 8px;
+  transition: background .15s;
+}
+.step-header:hover { background: #f5c0d830; }
+.activity-step.step-open .step-header { background: #f5c0d830; }
+
+.step-icon {
+  font-size: 11px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.step-icon.completed { color: var(--accent); }
+.step-icon.error     { color: #b03040; }
+.step-icon.running   { color: #c09040; }
+
+.step-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.step-summary {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-duration {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  background: #f5c0d840;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.step-chevron {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+
+/* ── Step arguments detail ────────────────────────────────── */
+.step-detail {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px 10px 32px;
+  background: #fce8f020;
+}
+.activity-step.step-open .step-detail {
+  display: flex;
+}
+
+.arg-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.arg-key {
+  color: var(--accent-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.arg-val {
+  color: var(--text);
+  word-break: break-all;
+  background: #f5c0d830;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.arg-empty {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* ── Thinking ─────────────────────────────────────────────── */

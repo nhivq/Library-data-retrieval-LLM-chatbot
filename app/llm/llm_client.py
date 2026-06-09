@@ -23,6 +23,46 @@ from app.services.conversation_service import (
 from app.database.connection import get_connection
 
 
+# ---------- Helper Functions ----------
+def summarize_tool_result(data):
+
+    if isinstance(data, list):
+
+        if len(data) == 0:
+            return "No results found"
+
+        first = data[0]
+
+        if "author_name" in first:
+            return (
+                f"Found {len(data)} author(s)"
+            )
+
+        if "title" in first:
+            return (
+                f"Found {len(data)} book(s)"
+            )
+
+        return (
+            f"Found {len(data)} result(s)"
+        )
+
+    if isinstance(data, dict):
+
+        if "title" in data:
+            return (
+                f"Retrieved book: "
+                f"{data['title']}"
+            )
+
+        if "author_name" in data:
+            return (
+                f"Retrieved author: "
+                f"{data['author_name']}"
+            )
+
+    return "Tool executed successfully"
+
 # ---------- Local Testing ----------
 DEFAULT_QUESTION = (
     "Delete all bookmarks of user 4. Then, save bookmark /works/OL10000112W "
@@ -56,8 +96,7 @@ async def ask_agent(
         MAX_ITERATIONS = 10
         iteration = 0
         progress = []
-
-        progress.append("Assembling the AI agent and preparing tools...")
+        step_number = 1
 
         # Discover available MCP tools and convert them to the format
         # expected by the local LLM client (OpenRouter-like format).
@@ -224,11 +263,24 @@ async def ask_agent(
                                         f"Tool error:\n{tool_text}"
                                 }
                             )
-                            progress.append(f"Tool {tool_name} returned an error.")
+                            progress.append(
+                                {
+                                    "step": step_number,
+                                    "tool": tool_name,
+                                    "arguments": arguments,
+                                    "summary": tool_text,
+                                    "duration_ms": tool_elapsed,
+                                    "status": "error"
+                                }
+                            )
+
+                            step_number += 1
 
                             continue
 
                         # Debugging: attempt to parse JSON tool output for inspection
+                        tool_data = None
+
                         try:
 
                             # Convert the JSON string into Python data for debugging/inspection.
@@ -245,6 +297,21 @@ async def ask_agent(
                             print(
                                 "\nTool result is not JSON."
                             )
+
+                        progress.append(
+                            {
+                                "step": step_number,
+                                "tool": tool_name,
+                                "arguments": arguments,
+                                "summary": summarize_tool_result(
+                                    tool_data
+                                ),
+                                "duration_ms": tool_elapsed,
+                                "status": "completed"
+                            }
+                        )
+
+                        step_number += 1
 
                         # Feed tool result back to LLM as both assistant and user
                         # messages so the model can incorporate the result in the next step.
