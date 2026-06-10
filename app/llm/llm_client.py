@@ -118,6 +118,10 @@ async def ask_agent(
 
         start = time.perf_counter()
 
+        response = requests.get(
+            "https://openrouter.ai/api/v1/models"
+        )
+        
         print(
             "OpenRouter ping:",
             round(
