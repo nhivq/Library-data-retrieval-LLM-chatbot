@@ -375,7 +375,9 @@ async def ask_agent(
                                     {
                                         "title": book.get("title"),
                                         "rating": book.get("rating"),
-                                        "authors": book.get("authors")
+                                        "authors": book.get("authors"),
+                                        "tags": book.get("tags")[:3] if book.get("tags") else None,
+                                        "publication_date": book.get("publication_date")
                                     }
                                 )
 
