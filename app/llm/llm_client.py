@@ -105,7 +105,16 @@ async def ask_agent(
     # 3. If the LLM asks for a tool, run it.
     # 4. Send the tool result back to the LLM.
     # 5. Return the final answer with progress metadata.
+    
+    mcp_start = time.perf_counter()
+
     async with client:
+
+        print(
+            "mcp_startup:",
+            round((time.perf_counter()-mcp_start)*1000),
+            "ms"
+        )
 
         start = time.perf_counter()
 
@@ -149,19 +158,31 @@ async def ask_agent(
 
         try:
 
+            start = time.perf_counter()
             initialize_conversation(
                 session_id,
                 SYSTEM_PROMPT,
                 conn
             )
+            print(
+                "initialize_conversation:",
+                round((time.perf_counter() - start) * 1000),
+                "ms"
+            )
 
             # Load persisted messages from the DB-backed store and append the
             # current user question, then persist the user message.
+            start = time.perf_counter()
             save_message(
                 session_id,
                 "user",
                 question,
                 conn
+            )
+            print(
+                "save_message (user):",
+                round((time.perf_counter() - start) * 1000),
+                "ms"
             )
 
             start = time.perf_counter()
@@ -234,6 +255,12 @@ async def ask_agent(
                         "assistant",
                         message.content,
                         conn
+                    )
+                    
+                    print(
+                        "save_message (assistant):",
+                        round((time.perf_counter() - time.perf_counter()) * 1000),
+                        "ms"
                     )
                     
                     return {
