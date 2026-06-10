@@ -1,3 +1,5 @@
+import time
+
 from psycopg2.extras import RealDictCursor
 
 """Service helpers for conversation and message persistence.
@@ -40,12 +42,31 @@ def get_or_create_conversation(
                        RETURNING id
                        """
 
-        cursor.execute(query_insert, (session_id,))
+        start = time.perf_counter()
+
+        cursor.execute(
+            query_select,
+            (session_id,)
+        )
+
+        print(
+            "conversation select:",
+            round((time.perf_counter() - start) * 1000),
+            "ms"
+        )
 
         new_result = cursor.fetchone()
 
+        start = time.perf_counter()
+
         # Commit the insert so the new conversation is persisted
         conn.commit()
+
+        print(
+            "conversation commit:",
+            round((time.perf_counter() - start) * 1000),
+            "ms"
+        )
 
         return new_result["id"]
 
@@ -72,12 +93,26 @@ def initialize_conversation(
     inserted to prime the conversation context.
     """
 
-    messages = get_messages(
+    conversation_id = get_or_create_conversation(
         session_id,
         conn
     )
 
-    if not messages:
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT 1
+        FROM messages
+        WHERE conversation_id = %s
+        LIMIT 1
+        """,
+        (conversation_id,)
+    )
+
+    exists = cursor.fetchone()
+
+    if not exists:
 
         save_message(
             session_id,
@@ -117,7 +152,15 @@ def save_message(
         content: str,
         conn
 ):
+    start = time.perf_counter()
+
     conversation_id = get_or_create_conversation(session_id, conn)
+
+    print(
+    "get_or_create_conversation:",
+    round((time.perf_counter()-start)*1000),
+    "ms"
+    )
 
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 

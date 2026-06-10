@@ -118,10 +118,6 @@ async def ask_agent(
 
         start = time.perf_counter()
 
-        response = requests.get(
-            "https://openrouter.ai/api/v1/models"
-        )
-
         print(
             "OpenRouter ping:",
             round(
@@ -390,14 +386,14 @@ async def ask_agent(
 
                         # Feed tool result back to LLM as both assistant and user
                         # messages so the model can incorporate the result in the next step.
+                        tool_summary = summarize_tool_result(tool_data)
+
                         messages.append(
                             {
                                 "role": "assistant",
-                                "content":(
-                                    f"Called tool "
-                                    f"{tool_name} "
-                                    f"with arguments "
-                                    f"{arguments}"
+                                "content": (
+                                    f"Called tool {tool_name} "
+                                    f"with arguments {arguments}"
                                 )
                             }
                         )
@@ -405,10 +401,10 @@ async def ask_agent(
                         messages.append(
                             {
                                 "role": "user",
-                                "content":(
-                                    f"Tool returned:\n"
-                                    f"{tool_text}"
-                                    )
+                                "content": (
+                                    f"Tool summary:\n"
+                                    f"{tool_summary}"
+                                )
                             }
                         )
 
