@@ -117,6 +117,11 @@ async def ask_agent(
         )
 
         start = time.perf_counter()
+        
+        response = requests.get(
+            "https://openrouter.ai/api/v1/models"
+        )
+
 
         print(
             "OpenRouter ping:",
@@ -391,9 +396,11 @@ async def ask_agent(
                         messages.append(
                             {
                                 "role": "assistant",
-                                "content": (
-                                    f"Called tool {tool_name} "
-                                    f"with arguments {arguments}"
+                                "content":(
+                                    f"Called tool "
+                                    f"{tool_name} "
+                                    f"with arguments "
+                                    f"{arguments}"
                                 )
                             }
                         )
@@ -402,7 +409,7 @@ async def ask_agent(
                             {
                                 "role": "user",
                                 "content": (
-                                    f"Tool summary:\n"
+                                    f"Tool returned:\n"
                                     f"{tool_summary}"
                                 )
                             }
