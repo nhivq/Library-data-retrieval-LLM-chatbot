@@ -375,16 +375,34 @@ async def ask_agent(
 
                             compact = []
 
-                            for book in tool_data[:5]:
-                                compact.append(
-                                    {
-                                        "work_key": book.get("work_key"),
-                                        "title": book.get("title"),
-                                        "rating": book.get("rating"),
-                                        "authors": book.get("authors"),
-                                        "tags": book.get("tags")[:3] if book.get("tags") else None,
-                                    }
-                                )
+                            if tool_data and isinstance(tool_data, list):
+
+                                first = tool_data[0]
+
+                                # search_books result
+                                if "title" in first:
+
+                                    for book in tool_data[:5]:
+                                        compact.append(
+                                            {
+                                                "work_key": book.get("work_key"),
+                                                "title": book.get("title"),
+                                                "rating": book.get("rating"),
+                                                "authors": book.get("authors"),
+                                                "tags": book.get("tags")[:3] if book.get("tags") else None,
+                                            }
+                                        )
+
+                                # search_authors result
+                                elif "author_name" in first:
+
+                                    for author in tool_data[:20]:
+                                        compact.append(
+                                            {
+                                                "author_name": author.get("author_name"),
+                                                "books": author.get("books", [])[:5]
+                                            }
+                                        )
 
                             tool_text = json.dumps(compact)
 

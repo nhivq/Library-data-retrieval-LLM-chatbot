@@ -90,11 +90,25 @@ def get_author(
 
 
 @mcp.tool(
-    description="Search author by author name or author key"
+    description="""
+    Search authors.
+
+    author_name:
+    Search for authors whose names contain text.
+
+    author_starts_with:
+    Search for authors whose names begin with specific letters.
+
+    Returns:
+    - author name
+    - author key
+    - books written by that author
+    """
 )
 def search_authors(
         author_name: str | None = None,
-        author_key: str | None = None,
+        author_starts_with: str | None = None,
+        author_key: str | None = None
 ):
     
     db = get_db()
@@ -104,6 +118,7 @@ def search_authors(
 
         return author_service.search_authors(
             author_name=author_name,
+            author_starts_with=author_starts_with,
             author_key=author_key,
             conn=conn
         )

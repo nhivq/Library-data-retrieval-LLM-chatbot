@@ -39,6 +39,7 @@ def get_author(
 
 def search_authors(
         author_name: str | None = None,
+        author_starts_with: str | None = None,
         author_key: str | None = None,
         conn=None
 ):
@@ -63,6 +64,12 @@ def search_authors(
               """
 
         params = []
+
+        if author_starts_with:
+            query += """
+                    AND a.author_name ILIKE %s
+                    """
+            params.append(f"{author_starts_with}%")
 
         if author_name:
             query += """
