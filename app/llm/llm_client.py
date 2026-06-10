@@ -97,7 +97,8 @@ SYSTEM_PROMPT = (
 # ---------- Agent ----------
 async def ask_agent(
         question: str,
-        session_id: str
+        session_id: str,
+        user_id: int
 ) -> dict:
     # Main flow:
     # 1. Ask MCP what tools exist.
@@ -154,10 +155,14 @@ async def ask_agent(
 
         try:
 
+            formatted_prompt = SYSTEM_PROMPT.format(
+                user_id=user_id
+            )
+
             start = time.perf_counter()
             initialize_conversation(
                 session_id,
-                SYSTEM_PROMPT,
+                formatted_prompt,
                 conn
             )
             print(
@@ -373,11 +378,11 @@ async def ask_agent(
                             for book in tool_data[:5]:
                                 compact.append(
                                     {
+                                        "work_key": book.get("work_key"),
                                         "title": book.get("title"),
                                         "rating": book.get("rating"),
                                         "authors": book.get("authors"),
                                         "tags": book.get("tags")[:3] if book.get("tags") else None,
-                                        "publication_date": book.get("publication_date")
                                     }
                                 )
 
@@ -458,7 +463,7 @@ async def main(
 ):
 
     # This is only for local testing from terminal.
-    result = await ask_agent(question, session_id)
+    result = await ask_agent(question, session_id, authenticated_user_id=0)
 
     print("\n=== FINAL ANSWER ===\n")
     print(result["answer"])

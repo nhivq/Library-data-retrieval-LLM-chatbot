@@ -23,7 +23,8 @@ async def chat(
 
     result = await ask_agent(
         request.message,
-        request.session_id or "web-session"
+        request.session_id or "web-session",
+        request.user_id
     )
 
     print(

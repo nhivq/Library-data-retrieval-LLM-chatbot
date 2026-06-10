@@ -49,7 +49,11 @@ async function handleSend() {
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, session_id: currentSessionId }),
+      body: JSON.stringify({
+        message: text,
+        session_id: currentSessionId,
+        user_id: Number(Auth.get()),
+      }),
     });
 
     if (!response.ok) throw new Error(`HTTP ${response.status}`);

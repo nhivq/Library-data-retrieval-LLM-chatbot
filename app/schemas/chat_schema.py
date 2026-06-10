@@ -11,6 +11,7 @@ class AgentStep(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = None
+    user_id: int
 
 
 class ChatResponse(BaseModel):
