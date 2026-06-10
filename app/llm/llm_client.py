@@ -349,7 +349,7 @@ async def ask_agent(
 
                             continue
 
-                        # Debugging: attempt to parse JSON tool output for inspection
+                        # Trim large tool payloads before sending them back to the LLM.
                         tool_data = None
 
                         try:
@@ -359,9 +359,27 @@ async def ask_agent(
                                 tool_text
                             )
 
+                            print(
+                                "Tool output chars:",
+                                len(tool_text)
+                            )
+
                             print("\nParsed Tool Data:")
                             print(type(tool_data))
                             print(tool_data)
+
+                            compact = []
+
+                            for book in tool_data[:5]:
+                                compact.append(
+                                    {
+                                        "title": book.get("title"),
+                                        "rating": book.get("rating"),
+                                        "authors": book.get("authors")
+                                    }
+                                )
+
+                            tool_text = json.dumps(compact)
 
                         except Exception:
 
