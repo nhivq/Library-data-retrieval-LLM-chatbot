@@ -45,7 +45,7 @@ def get_or_create_conversation(
         start = time.perf_counter()
 
         cursor.execute(
-            query_select,
+            query_insert,
             (session_id,)
         )
 
