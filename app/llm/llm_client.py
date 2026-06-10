@@ -1,8 +1,7 @@
 import asyncio
 import json
-import os
 import time
-import requests
+from app.llm.tool_result_processor import process_tool_result
 
 
 """Client that orchestrates LLM usage, tools, and conversation memory.
@@ -359,9 +358,11 @@ async def ask_agent(
 
                         try:
 
-                            # Convert the JSON string into Python data for debugging/inspection.
-                            tool_data = json.loads(
-                                tool_text
+                            tool_data, compact_text = (
+                                process_tool_result(
+                                    tool_name,
+                                    tool_text
+                                )
                             )
 
                             print(
@@ -373,44 +374,13 @@ async def ask_agent(
                             print(type(tool_data))
                             print(tool_data)
 
-                            compact = []
-
-                            if tool_data and isinstance(tool_data, list):
-
-                                first = tool_data[0]
-
-                                # search_books result
-                                if "title" in first:
-
-                                    for book in tool_data[:5]:
-                                        compact.append(
-                                            {
-                                                "work_key": book.get("work_key"),
-                                                "title": book.get("title"),
-                                                "rating": book.get("rating"),
-                                                "authors": book.get("authors"),
-                                                "tags": book.get("tags")[:3] if book.get("tags") else None,
-                                            }
-                                        )
-
-                                # search_authors result
-                                elif "author_name" in first:
-
-                                    for author in tool_data[:20]:
-                                        compact.append(
-                                            {
-                                                "author_name": author.get("author_name"),
-                                                "books": author.get("books", [])[:5]
-                                            }
-                                        )
-
-                            tool_text = json.dumps(compact)
-
                         except Exception:
 
                             print(
                                 "\nTool result is not JSON."
                             )
+
+                            compact_text = tool_text
 
                         progress.append(
                             {
@@ -447,7 +417,7 @@ async def ask_agent(
                                 "role": "user",
                                 "content": (
                                     f"Tool returned:\n"
-                                    f"{tool_text}"
+                                    f"{compact_text}"
                                 )
                             }
                         )
