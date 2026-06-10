@@ -593,12 +593,12 @@ html, body {
 
 .msg-bubble.markdown ul,
 .msg-bubble.markdown ol {
-  padding-left: 24px;
+  padding-left: 20px;
   margin: 6px 0 8px;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
-.msg-bubble.markdown ol { list-style-position: inside; padding-left: 4px; }
-.msg-bubble.markdown ul { list-style-position: outside; }
 .msg-bubble.markdown li { font-size: 14px; line-height: 1.55; }
 
 .msg-bubble.markdown strong { font-weight: 600; color: var(--text); }

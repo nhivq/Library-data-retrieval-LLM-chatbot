@@ -45,7 +45,7 @@ def get_or_create_conversation(
         start = time.perf_counter()
 
         cursor.execute(
-            query_insert,
+            query_select,
             (session_id,)
         )
 
@@ -67,9 +67,6 @@ def get_or_create_conversation(
             round((time.perf_counter() - start) * 1000),
             "ms"
         )
-
-        if not new_result:
-            raise RuntimeError("Failed to create conversation row")
 
         return new_result["id"]
 
@@ -263,3 +260,4 @@ def delete_conversation(
     finally:
 
         cursor.close()
+
