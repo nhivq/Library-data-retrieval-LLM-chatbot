@@ -212,8 +212,15 @@ async def ask_agent(
 
                 # Ask LLM what to do next (it may request tools)
                 print("MODEL:", "openai/gpt-4o-mini")
+
                 start = time.perf_counter()
+
                 print("Sending request to OpenRouter...")
+                print(
+                    "Prompt chars:",
+                    len(json.dumps(messages))
+                )
+
                 response = llm.chat.completions.create(
                     model="openai/gpt-4o-mini",
                     messages=messages,
@@ -320,8 +327,13 @@ async def ask_agent(
 
                         else:
 
-                            tool_text = (
-                                tool_result.content[0].text
+                            tool_data = json.loads(tool_text)
+
+                            tool_data = tool_data[:5]
+
+                            tool_text = json.dumps(
+                                tool_data,
+                                ensure_ascii=False
                             )
 
                         # If the tool reported an error, append an explanatory
@@ -375,7 +387,9 @@ async def ask_agent(
                                     {
                                         "title": book.get("title"),
                                         "rating": book.get("rating"),
-                                        "authors": book.get("authors")
+                                        "authors": book.get("authors"),
+                                        "tags": book.get("tags"),
+                                        "publication_date": book.get("publication_date")
                                     }
                                 )
 
