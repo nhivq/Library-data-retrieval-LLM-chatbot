@@ -463,7 +463,7 @@ async def main(
 ):
 
     # This is only for local testing from terminal.
-    result = await ask_agent(question, session_id, authenticated_user_id=0)
+    result = await ask_agent(question, session_id, user_id=0)
 
     print("\n=== FINAL ANSWER ===\n")
     print(result["answer"])
