@@ -13,15 +13,12 @@ The main entrypoint for the agent loop is `ask_agent` which implements
 the ReAct-style loop: ask LLM -> run tools -> send tool outputs back -> repeat.
 """
 
-from app.llm.setup import client, llm
+from app.llm.setup import client
 from app.llm.tool_converter import mcp_tool_to_openrouter
-from app.services.conversation_service import (
-    initialize_conversation,
-    get_messages,
-    save_message
-)
+from app.services.conversation_service import initialize_conversation, get_messages, save_message
 from app.database.connection import get_connection
-
+from app.llm.prompts import SYSTEM_PROMPT, DEFAULT_QUESTION
+from app.llm.openrouter_client import call_llm
 
 # ---------- Helper Functions ----------
 def summarize_tool_result(data):
@@ -75,22 +72,6 @@ async def get_openrouter_tools():
             for tool in mcp_tools
         ]
     return openrouter_tools_cache
-
-
-# ---------- Local Testing ----------
-DEFAULT_QUESTION = (
-    "Delete all bookmarks of user 4. Then, save bookmark /works/OL10000112W "
-    "for user 4 and then show all user 4's bookmarks"
-)
-
-
-SYSTEM_PROMPT = (
-    "You are a helpful book assistant with access to the app's real book data. "
-    "For any question about books, authors, ratings, tags, publication dates, bookmarks, or search results, use the available tools instead of answering from your own knowledge. "
-    "If you cannot find an answer in the tool output, say that the data is unavailable rather than inventing book titles, authors, ratings, or dates. "
-    "Do not hallucinate or fabricate books."
-    "The authenticated user has user_id={user_id}. Never ask for a user_id. Use this user_id whenever bookmark tools require one."
-)
 
 
 # ---------- Agent ----------
@@ -218,8 +199,7 @@ async def ask_agent(
                 print("MODEL:", "openai/gpt-4o-mini")
                 start = time.perf_counter()
                 print("Sending request to OpenRouter...")
-                response = llm.chat.completions.create(
-                    model="openai/gpt-4o-mini",
+                response = call_llm(
                     messages=messages,
                     tools=openrouter_tools
                 )
