@@ -131,7 +131,21 @@ def search_authors(
 # ---------- Bookmark Tools ----------
 
 @mcp.tool(
-    description="Save book into bookmark under one's user ID"
+    description="""
+    Save a book bookmark.
+
+    IMPORTANT:
+    work_key must be the exact value returned by search_books.
+
+    Valid examples:
+    "/works/OL10410009W"
+    "/works/OL1068669W"
+
+    Do NOT remove the "/works/" prefix.
+    Do NOT use book titles.
+    Do NOT shorten the identifier.
+
+    """
 )
 def save_bookmarks(
     bookmark: Bookmark
