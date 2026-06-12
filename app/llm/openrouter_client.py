@@ -5,10 +5,14 @@ MODEL = "openai/gpt-4o-mini"
 
 def call_llm(
         messages,
-        tools=None
+        tools=None,
+        stream=False
 ):
-    return llm.chat.completions.create(
+    response = llm.chat.completions.create(
         model=MODEL,
         messages=messages,
-        tools=tools
+        tools=tools,
+        stream=stream
     )
+    
+    return response

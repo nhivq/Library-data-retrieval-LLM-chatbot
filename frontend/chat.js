@@ -127,9 +127,7 @@ while (true) {
       }
 
 
-      if (
-        data.type === 'token'
-      ) {
+      if (data.type === "delta") {
 
         stopTimer();
 

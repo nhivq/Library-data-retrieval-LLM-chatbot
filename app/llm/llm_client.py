@@ -414,33 +414,77 @@ async def ask_agent_stream(
     user_id: int
 ):
     yield (
-        'data: {"type":"progress","message":"Thinking"}\n\n'
+        'data: {"type":"progress","message":"Starting"}\n\n'
     )
 
-    result = await ask_agent(
-        question,
-        session_id,
-        user_id
-    )
+    openrouter_tools = await get_openrouter_tools()
 
-    text = result["answer"]
+    conn = get_connection()
 
-    for ch in text:
+    try:
 
-        payload = json.dumps({
-            "type": "token",
-            "delta": ch,
-        })
-
-        yield (
-            f"data: {payload}\n\n"
+        initialize_conversation(
+            session_id,
+            SYSTEM_PROMPT.format(user_id=user_id),
+            conn
         )
 
-        await asyncio.sleep(0.01)
+        save_message(
+            session_id,
+            "user",
+            question,
+            conn
+        )
 
-    yield (
-        'data: {"type":"complete"}\n\n'
-    )
+        messages = get_messages(
+            session_id,
+            conn
+        )
+
+        response = call_llm(
+            messages=messages,
+            tools=openrouter_tools,
+            stream=True
+        )
+
+        full_answer = ""
+
+        for chunk in response:
+
+            if not chunk.choices:
+                continue
+
+            delta = (chunk.choices[0].delta.content)
+
+            if delta:
+
+                full_answer += delta
+
+                payload = json.dumps(
+                    {
+                        "type": "delta",
+                        "delta": delta
+                    }
+                )
+
+                yield (
+                    f"data: {payload}\n\n"
+                )
+
+        save_message(
+            session_id,
+            "assistant",
+            full_answer,
+            conn
+        )
+
+        yield (
+            'data: {"type":"complete"}\n\n'
+        )
+
+    finally:
+
+        conn.close()
 
 
 # Local Test
