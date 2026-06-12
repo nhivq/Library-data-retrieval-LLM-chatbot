@@ -1,10 +1,6 @@
-import time
-
-from fastapi import APIRouter
-
+from fastapi import APIRouter, StreamingResponse
 from app.schemas.chat_schema import ChatRequest, ChatResponse
-
-from app.llm.llm_client import ask_agent
+from app.llm.llm_client import ask_agent_stream
 
 
 router = APIRouter(
@@ -19,21 +15,15 @@ router = APIRouter(
 async def chat(
     request: ChatRequest
 ):
-    start = time.perf_counter()
 
-    result = await ask_agent(
-        request.message,
-        request.session_id or "web-session",
-        request.user_id
+    return StreamingResponse(
+        ask_agent_stream(
+            request.message,
+            request.session_id
+            or
+            "web-session",
+            request.user_id
+        ),
+        media_type="text/event-stream"
     )
 
-    print(
-        "TOTAL REQUEST:",
-        round((time.perf_counter() - start) * 1000),
-        "ms"
-    )
-
-    return ChatResponse(
-        answer=result["answer"],
-        progress=result.get("progress", [])
-    )

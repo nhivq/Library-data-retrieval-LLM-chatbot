@@ -2,17 +2,6 @@ import asyncio
 import json
 import time
 from app.llm.tool_result_processor import process_tool_result
-
-
-"""Client that orchestrates LLM usage, tools, and conversation memory.
-
-This module is responsible for assembling tools from the MCP client,
-feeding them to the LLM, executing any requested tool calls, and
-maintaining a lightweight conversation store for interactive sessions.
-The main entrypoint for the agent loop is `ask_agent` which implements
-the ReAct-style loop: ask LLM -> run tools -> send tool outputs back -> repeat.
-"""
-
 from app.llm.setup import client
 from app.llm.tool_converter import mcp_tool_to_openrouter
 from app.services.conversation_service import initialize_conversation, get_messages, save_message
@@ -211,13 +200,12 @@ async def ask_agent(
                 )
 
                 message = response.choices[0].message
+                
                 print("\n=== MESSAGE ===")
                 print(message)
-
                 print("\n========================")
                 print(f"Iteration {iteration}")
                 print("========================")
-
                 print("\nTool Calls:")
                 print(message.tool_calls)
 
@@ -257,9 +245,7 @@ async def ask_agent(
                     tool_name = tool_call.function.name
 
                     # Tool arguments come back as a JSON string, so convert them to a dict.
-                    arguments = json.loads(
-                        tool_call.function.arguments
-                    )
+                    arguments = json.loads(tool_call.function.arguments)
 
                     call_signature = (
                         tool_name,
@@ -276,7 +262,6 @@ async def ask_agent(
 
                     print("\nTool:")
                     print(tool_name)
-
                     print("\nArguments:")
                     print(arguments)
 
@@ -349,7 +334,6 @@ async def ask_agent(
                                 "Tool output chars:",
                                 len(tool_text)
                             )
-
                             print("\nParsed Tool Data:")
                             print(type(tool_data))
                             print(tool_data)
@@ -422,6 +406,29 @@ async def ask_agent(
         finally:
 
             conn.close()
+
+
+async def ask_agent_stream(
+    question: str,
+    session_id: str,
+    user_id: int
+):
+    yield (
+        'data: {"type":"progress","message":"Starting"}\n\n'
+    )
+
+    result = await ask_agent(
+        question,
+        session_id,
+        user_id
+    )
+
+    payload = json.dumps({
+        "type": "done",
+        "answer": result["answer"],
+    })
+
+    yield f"data: {payload}\n\n"
 
 
 # Local Test
