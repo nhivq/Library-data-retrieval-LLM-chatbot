@@ -481,7 +481,7 @@ async def ask_agent_stream(
             start = time.perf_counter()
             response = call_llm(
                 messages=messages,
-                tools=openrouter_tools,
+                tools=None,
                 stream=True
             )
             print(
