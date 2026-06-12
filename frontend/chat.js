@@ -46,25 +46,78 @@ async function handleSend() {
   const stopTimer   = startLiveTimer(thinkingRow);
 
   try {
-    const response = await fetch(`${API_BASE}/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: text,
-        session_id: currentSessionId,
-        user_id: Number(Auth.get()),
-      }),
-    });
+    const response = await fetch(`${API_BASE}/chat`,
+  {
+    method: 'POST',
 
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    headers: {
+      'Content-Type':'application/json',
+    },
 
-    const data     = await response.json();
-    const answer   = data.answer   ?? 'No response received.';
-    const progress = data.progress ?? [];
+    body: JSON.stringify({
+      message: text,
+      session_id:currentSessionId,
+      user_id: Number(Auth.get()),
+    }),
+  }
+);
+
+if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
 
     stopTimer();
-    replaceWithAnswer(thinkingRow, answer, progress);
-    ConvHistory.addMessage(text, answer);
+    const reader = response.body.getReader();
+
+const decoder = new TextDecoder();
+
+let answer = '';
+
+let progress = [];
+
+while (true) {
+
+  const {done,value} = await reader.read();
+
+  if (done)
+    break;
+
+  const chunk =decoder.decode(value, {stream:true});
+
+  const events =chunk.split('\n\n');
+
+  for (const event of events) {
+
+    if (!event.startsWith('data:'))
+      continue;
+
+    try {
+
+      const data = JSON.parse(event.replace('data:','')
+        );
+
+      // Progress updates
+      if (data.type==='progress') {
+        progress.push({summary:data.message}
+        );
+        replaceWithAnswer(thinkingRow, answer, progress);
+      }
+
+      // Typing effect
+      if (data.type==='token') {
+        answer +=data.delta;
+        replaceWithAnswer(thinkingRow, answer, progress);
+      }
+
+      // Stream complete
+      if (data.type==='complete') {
+        ConvHistory.addMessage(
+            text,
+            answer
+          );
+        }}
+
+    catch (e) {
+      console.log('Invalid SSE:', event);
+    }}}
 
   } catch (err) {
     console.error('Chat error:', err);
