@@ -9,38 +9,19 @@ router = APIRouter(
 )
 
 
-# @router.post("/chat")
-# # using async because ask_agent() is already async def ask_agent(...)
-# async def chat(
-#     request: ChatRequest
-# ):
-
-#     return StreamingResponse(
-#         ask_agent_stream(
-#             request.message,
-#             request.session_id
-#             or
-#             "web-session",
-#             request.user_id
-#         ),
-#         media_type="text/event-stream"
-#     )
-
-
 @router.post("/chat")
+# using async because ask_agent() is already async def ask_agent(...)
 async def chat(
     request: ChatRequest
 ):
 
-    print("\n===== STREAM ROUTE EXECUTED =====\n")
-
-    async def test():
-
-        yield (
-            'data: {"type":"progress","message":"route reached"}\n\n'
-        )
-
     return StreamingResponse(
-        test(),
+        ask_agent_stream(
+            request.message,
+            request.session_id
+            or
+            "web-session",
+            request.user_id
+        ),
         media_type="text/event-stream"
     )
