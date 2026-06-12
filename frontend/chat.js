@@ -89,31 +89,66 @@ while (true) {
     if (!event.startsWith('data:'))
       continue;
 
-    try {
+      try {
 
       const data = JSON.parse(event.replace('data:','')
         );
 
-      // Progress updates
-      if (data.type==='progress') {
-        progress.push({summary:data.message}
+      console.log(
+        "EVENT:",
+        data
+      );
+
+      if (
+        data.type === 'progress'
+      ) {
+
+        progress = [
+          {
+            step: 1,
+
+            tool:
+              "assistant",
+
+            summary:
+              data.message,
+
+            duration_ms:
+              0,
+
+            status:
+              "running",
+          },
+        ];
+
+        replaceWithAnswer(
+          thinkingRow,
+          answer,
+          progress
         );
-        replaceWithAnswer(thinkingRow, answer, progress);
       }
 
-      // Typing effect
-      if (data.type==='token') {
-        answer +=data.delta;
-        replaceWithAnswer(thinkingRow, answer, progress);
-      }
 
-      // Stream complete
-      if (data.type==='complete') {
+      if (
+        data.type === 'done'
+      ) {
+
+        answer =
+          data.answer;
+
+        replaceWithAnswer(
+          thinkingRow,
+          answer,
+          progress
+        );
+
         ConvHistory.addMessage(
-            text,
-            answer
-          );
-        }}
+          text,
+          answer
+        );
+
+      }
+        }
 
     catch (e) {
       console.log('Invalid SSE:', event);
