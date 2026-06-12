@@ -64,7 +64,6 @@ async function handleSend() {
 
 if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
 
-    stopTimer();
     const reader = response.body.getReader();
 
 const decoder = new TextDecoder();
@@ -121,26 +120,34 @@ while (true) {
           },
         ];
 
-        replaceWithAnswer(
+        updateThinkingProgress(
           thinkingRow,
-          answer,
           progress
         );
       }
 
 
       if (
-        data.type === 'done'
+        data.type === 'token'
       ) {
 
-        answer =
-          data.answer;
+        stopTimer();
+
+        answer +=
+          data.delta;
 
         replaceWithAnswer(
           thinkingRow,
           answer,
           progress
         );
+
+      }
+
+
+      if (
+        data.type === 'complete'
+      ) {
 
         ConvHistory.addMessage(
           text,
@@ -171,13 +178,20 @@ function startLiveTimer(row) {
 
   const interval = setInterval(() => {
     const s = ((Date.now() - start) / 1000).toFixed(1);
+    const progText = row.dataset.progress ? ` (${row.dataset.progress})` : '';
     bubble.innerHTML =
-      `<span class="thinking-label">Thinking` +
+      `<span class="thinking-label">Thinking${escapeHtml(progText)}` +
       `<span class="dots"><span></span><span></span><span></span></span></span>` +
       `<span class="thinking-timer">${s}s</span>`;
   }, 100);
 
   return () => clearInterval(interval);
+}
+
+function updateThinkingProgress(row, progress) {
+  if (progress && progress[0]) {
+    row.dataset.progress = progress[0].summary;
+  }
 }
 
 // ── Replace thinking bubble with answer + activity panel ─────

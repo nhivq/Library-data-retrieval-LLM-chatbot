@@ -414,7 +414,7 @@ async def ask_agent_stream(
     user_id: int
 ):
     yield (
-        'data: {"type":"progress","message":"Starting"}\n\n'
+        'data: {"type":"progress","message":"Thinking"}\n\n'
     )
 
     result = await ask_agent(
@@ -423,12 +423,24 @@ async def ask_agent_stream(
         user_id
     )
 
-    payload = json.dumps({
-        "type": "done",
-        "answer": result["answer"],
-    })
+    text = result["answer"]
 
-    yield f"data: {payload}\n\n"
+    for ch in text:
+
+        payload = json.dumps({
+            "type": "token",
+            "delta": ch,
+        })
+
+        yield (
+            f"data: {payload}\n\n"
+        )
+
+        await asyncio.sleep(0.01)
+
+    yield (
+        'data: {"type":"complete"}\n\n'
+    )
 
 
 # Local Test
