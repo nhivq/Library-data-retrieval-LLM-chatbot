@@ -481,7 +481,7 @@ async def ask_agent_stream(
             start = time.perf_counter()
             response = call_llm(
                 messages=messages,
-                tools=None,
+                tools=openrouter_tools,
                 stream=True
             )
             print(
@@ -529,12 +529,12 @@ async def ask_agent_stream(
 
                     full_answer += delta
 
-                    payload = json.dumps(
-                        {
-                            "type": "token",
-                            "delta": delta
-                        }
-                    )
+                payload = json.dumps(
+                    {
+                        "type": "delta",
+                        "delta": delta
+                    }
+                )
 
                     yield (
                         f"data: {payload}\n\n"
