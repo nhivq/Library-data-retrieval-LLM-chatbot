@@ -421,147 +421,149 @@ async def ask_agent_stream(
         'data: {"type":"progress","message":"Starting"}\n\n'
     )
 
-    start = time.perf_counter()
-    openrouter_tools = await get_openrouter_tools()
-    print(
-        "stream list_tools:",
-        round((time.perf_counter() - start) * 1000),
-        "ms",
-        "tools:",
-        len(openrouter_tools)
-    )
-
-    conn = get_connection()
-
-    try:
+    async with client:
 
         start = time.perf_counter()
-        initialize_conversation(
-            session_id,
-            SYSTEM_PROMPT.format(user_id=user_id),
-            conn
-        )
+        openrouter_tools = await get_openrouter_tools()
         print(
-            "stream initialize_conversation:",
-            round((time.perf_counter() - start) * 1000),
-            "ms"
-        )
-
-        start = time.perf_counter()
-        save_message(
-            session_id,
-            "user",
-            question,
-            conn
-        )
-        print(
-            "stream save_message user:",
-            round((time.perf_counter() - start) * 1000),
-            "ms"
-        )
-
-        start = time.perf_counter()
-        messages = get_messages(
-            session_id,
-            conn
-        )
-        print(
-            "stream get_messages:",
+            "stream list_tools:",
             round((time.perf_counter() - start) * 1000),
             "ms",
-            "message count:",
-            len(messages),
-            "chars:",
-            len(json.dumps(messages))
+            "tools:",
+            len(openrouter_tools)
         )
 
-        print("stream calling OpenRouter...")
-        start = time.perf_counter()
-        response = call_llm(
-            messages=messages,
-            tools=openrouter_tools,
-            stream=True
-        )
-        print(
-            "stream OpenRouter response object:",
-            round((time.perf_counter() - start) * 1000),
-            "ms"
-        )
+        conn = get_connection()
 
-        full_answer = ""
-        chunk_count = 0
-        first_chunk_seen = False
-        loop_start = time.perf_counter()
+        try:
 
-        for chunk in response:
-            chunk_count += 1
+            start = time.perf_counter()
+            initialize_conversation(
+                session_id,
+                SYSTEM_PROMPT.format(user_id=user_id),
+                conn
+            )
+            print(
+                "stream initialize_conversation:",
+                round((time.perf_counter() - start) * 1000),
+                "ms"
+            )
 
-            if not first_chunk_seen:
-                first_chunk_seen = True
-                print(
-                    "stream first chunk:",
-                    round((time.perf_counter() - loop_start) * 1000),
-                    "ms"
-                )
+            start = time.perf_counter()
+            save_message(
+                session_id,
+                "user",
+                question,
+                conn
+            )
+            print(
+                "stream save_message user:",
+                round((time.perf_counter() - start) * 1000),
+                "ms"
+            )
 
-            if chunk_count % 50 == 0:
-                print(
-                    "stream chunks:",
-                    chunk_count,
-                    "answer chars:",
-                    len(full_answer),
-                    "elapsed seconds:",
-                    round(time.perf_counter() - stream_start, 1)
-                )
+            start = time.perf_counter()
+            messages = get_messages(
+                session_id,
+                conn
+            )
+            print(
+                "stream get_messages:",
+                round((time.perf_counter() - start) * 1000),
+                "ms",
+                "message count:",
+                len(messages),
+                "chars:",
+                len(json.dumps(messages))
+            )
 
-            if (time.perf_counter() - stream_start) > 120:
-                print("stream timeout guard hit after 120 seconds")
-                break
+            print("stream calling OpenRouter...")
+            start = time.perf_counter()
+            response = call_llm(
+                messages=messages,
+                tools=openrouter_tools,
+                stream=True
+            )
+            print(
+                "stream OpenRouter response object:",
+                round((time.perf_counter() - start) * 1000),
+                "ms"
+            )
 
-            if not chunk.choices:
-                continue
+            full_answer = ""
+            chunk_count = 0
+            first_chunk_seen = False
+            loop_start = time.perf_counter()
 
-            delta = (chunk.choices[0].delta.content)
+            for chunk in response:
+                chunk_count += 1
 
-            if delta:
+                if not first_chunk_seen:
+                    first_chunk_seen = True
+                    print(
+                        "stream first chunk:",
+                        round((time.perf_counter() - loop_start) * 1000),
+                        "ms"
+                    )
 
-                full_answer += delta
+                if chunk_count % 50 == 0:
+                    print(
+                        "stream chunks:",
+                        chunk_count,
+                        "answer chars:",
+                        len(full_answer),
+                        "elapsed seconds:",
+                        round(time.perf_counter() - stream_start, 1)
+                    )
 
-                payload = json.dumps(
-                    {
-                        "type": "delta",
-                        "delta": delta
-                    }
-                )
+                if (time.perf_counter() - stream_start) > 120:
+                    print("stream timeout guard hit after 120 seconds")
+                    break
 
-                yield (
-                    f"data: {payload}\n\n"
-                )
+                if not chunk.choices:
+                    continue
 
-        save_message(
-            session_id,
-            "assistant",
-            full_answer,
-            conn
-        )
-        print(
-            "stream complete:",
-            "chunks:",
-            chunk_count,
-            "answer chars:",
-            len(full_answer),
-            "total seconds:",
-            round(time.perf_counter() - stream_start, 1)
-        )
+                delta = (chunk.choices[0].delta.content)
 
-        yield (
-            'data: {"type":"complete"}\n\n'
-        )
+                if delta:
 
-    finally:
+                    full_answer += delta
 
-        conn.close()
-        print("===== ask_agent_stream END =====\n")
+                    payload = json.dumps(
+                        {
+                            "type": "token",
+                            "delta": delta
+                        }
+                    )
+
+                    yield (
+                        f"data: {payload}\n\n"
+                    )
+
+            save_message(
+                session_id,
+                "assistant",
+                full_answer,
+                conn
+            )
+            print(
+                "stream complete:",
+                "chunks:",
+                chunk_count,
+                "answer chars:",
+                len(full_answer),
+                "total seconds:",
+                round(time.perf_counter() - stream_start, 1)
+            )
+
+            yield (
+                'data: {"type":"complete"}\n\n'
+            )
+
+        finally:
+
+            conn.close()
+            print("===== ask_agent_stream END =====\n")
 
 
 # Local Test
