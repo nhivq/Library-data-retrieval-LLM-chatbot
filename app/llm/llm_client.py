@@ -496,6 +496,9 @@ async def ask_agent_stream(
             for chunk in response:
                 chunk_count += 1
 
+                print("CHUNK:")
+                print(chunk)
+
                 if not first_chunk_seen:
                     first_chunk_seen = True
                     print(
@@ -523,18 +526,20 @@ async def ask_agent_stream(
 
                 delta = (chunk.choices[0].delta.content)
 
-                if delta:
+                print("DELTA:", delta)
+
+                if delta is not None:
 
                     full_answer += delta
 
-                payload = json.dumps(
-                    {
-                        "type": "delta",
-                        "delta": delta
-                    }
-                )
+                    payload = json.dumps(
+                        {
+                            "type": "delta",
+                            "delta": delta
+                        }
+                    )
 
-                yield f"data: {payload}\n\n"
+                    yield f"data: {payload}\n\n"
 
             save_message(
                 session_id,
