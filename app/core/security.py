@@ -1,21 +1,31 @@
 from jose import jwt
 from datetime import datetime, timedelta
-
-
-SECRET_KEY = "your-secret-key"
-ALGORITHM = "HS256"
+from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 def create_access_token(data:dict):
 
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(minutes=30)
+    expire = datetime.utcnow() + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode["exp"] = expire
 
-    return jwt.encode(
+    token = jwt.encode(
         to_encode,
-        SECRET_KEY,
-        algorithm=ALGORITHM
+        JWT_SECRET_KEY,
+        algorithm=JWT_ALGORITHM
     )
+
+    return token
+
+
+def decode_access_token(token:str):
+
+    payload = jwt.decode(
+        token,
+        JWT_SECRET_KEY,
+        algorithms=[JWT_ALGORITHM]
+    )
+
+    return payload

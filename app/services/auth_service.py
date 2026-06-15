@@ -1,5 +1,6 @@
 import bcrypt
 from psycopg2.extras import RealDictCursor
+from app.core.security import create_access_token
 
 # Helper function
 def hash_password(password: str):
@@ -97,9 +98,13 @@ def login_user(
         ):
             raise ValueError("Wrong password")
 
+        token = create_access_token(
+            {"sub": str(existing_user["user_id"])}
+        )
+
         return {
-            "message": "Login successful",
-            "user_id": existing_user["user_id"]
+            "access_token": token,
+            "token_type": "bearer"
         }
 
     finally:
