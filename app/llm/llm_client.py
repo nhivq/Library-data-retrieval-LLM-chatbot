@@ -399,6 +399,8 @@ async def ask_agent_stream(
                     tools=openrouter_tools,
                     stream=True
                 )
+                # Initialize an accumulator to assemble stream chunks of tool calls.
+                # This is necessary because arguments and names are received piece-by-piece.
                 tool_calls_accumulator = {}
                 assistant_text = ""
                 for chunk in response:
@@ -421,6 +423,7 @@ async def ask_agent_stream(
                     # CASE 2: tool call response
                     # ----------------------------
                     if delta.tool_calls:
+                        # Emit progress to let the frontend know a tool execution has started.
                         yield 'data: {"type":"progress","message":"Using tool"}\n\n'
                         for tc in delta.tool_calls:
                             idx = tc.index
@@ -441,7 +444,8 @@ async def ask_agent_stream(
                                     tool_calls_accumulator[idx]["name"] = tc.function.name
                             if tc.function.arguments:
                                 tool_calls_accumulator[idx]["arguments"] += tc.function.arguments
-                # Process the outcome after the stream finishes
+                # If no tool calls were requested during the stream, this is the final assistant response.
+                # We append it to the in-memory context and break out of the ReAct loop.
                 if not tool_calls_accumulator:
                     messages.append(
                         {
@@ -450,12 +454,13 @@ async def ask_agent_stream(
                         }
                     )
                     break
-                # Execute all accumulated tool calls
+                # Parse and execute all accumulated tool calls.
                 for idx, tc_data in sorted(tool_calls_accumulator.items()):
                     tool_name = tc_data["name"]
                     arguments = json.loads(tc_data["arguments"])
                     try:
                         tool_start = time.perf_counter()
+                        # Call the MCP tool via the active fastmcp client.
                         tool_result = await client.call_tool(
                             tool_name,
                             arguments
@@ -486,6 +491,7 @@ async def ask_agent_stream(
                             continue
                         tool_data = None
                         try:
+                            # Compact the tool payloads to avoid hitting context window limits.
                             tool_data, compact_text = process_tool_result(
                                 tool_name,
                                 tool_text
@@ -508,6 +514,7 @@ async def ask_agent_stream(
                             }
                         )
                         step_number += 1
+                        # Append assistant tool call reference and tool response to history.
                         messages.append(
                             {
                                 "role": "assistant",
@@ -547,6 +554,8 @@ async def ask_agent_stream(
                 }
             )
             yield f"data: {payload}\n\n"
+            # Save the final answer to the database after yielding complete,
+            # so the user sees the output immediately without waiting for database writes.
             save_message(
                 session_id,
                 "assistant",
