@@ -417,9 +417,7 @@ async def ask_agent_stream(
 
     print("\n===== ask_agent_stream START =====")
 
-    yield (
-        'data: {"type":"progress","message":"Starting"}\n\n'
-    )
+    yield 'data: {"type":"progress","message":"Starting"}\n\n'
 
     async with client:
 
@@ -536,9 +534,7 @@ async def ask_agent_stream(
                     }
                 )
 
-                yield (
-                    f"data: {payload}\n\n"
-                )
+                yield f"data: {payload}\n\n"
 
             save_message(
                 session_id,
@@ -556,9 +552,7 @@ async def ask_agent_stream(
                 round(time.perf_counter() - stream_start, 1)
             )
 
-            yield (
-                'data: {"type":"complete"}\n\n'
-            )
+            yield 'data: {"type":"complete"}\n\n'
 
         finally:
 
