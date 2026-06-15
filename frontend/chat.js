@@ -147,6 +147,14 @@ while (true) {
         data.type === 'complete'
       ) {
 
+        if (data.progress) {
+          progress = data.progress;
+        }
+        replaceWithAnswer(
+          thinkingRow,
+          answer,
+          progress
+        );
         ConvHistory.addMessage(
           text,
           answer

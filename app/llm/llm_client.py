@@ -1,6 +1,8 @@
 import asyncio
 import json
 import time
+
+from dns import message
 from app.llm.tool_result_processor import process_tool_result
 from app.llm.setup import client
 from app.llm.tool_converter import mcp_tool_to_openrouter
@@ -75,27 +77,8 @@ async def ask_agent(
     # 3. If the LLM asks for a tool, run it.
     # 4. Send the tool result back to the LLM.
     # 5. Return the final answer with progress metadata.
-    
-    mcp_start = time.perf_counter()
 
     async with client:
-
-        print(
-            "mcp_startup:",
-            round((time.perf_counter()-mcp_start)*1000),
-            "ms"
-        )
-
-        start = time.perf_counter()
-
-        print(
-            "OpenRouter ping:",
-            round(
-                (time.perf_counter() - start)
-                * 1000
-            ),
-            "ms"
-        )
 
         # Safety protection to avoid infinite tool loops
         MAX_ITERATIONS = 10
@@ -105,20 +88,7 @@ async def ask_agent(
 
         # Discover available MCP tools and convert them to the format
         # expected by the local LLM client (OpenRouter-like format).
-        start = time.perf_counter()
         openrouter_tools = await get_openrouter_tools()
-        print(
-            "list_tools:",
-            round((time.perf_counter() - start) * 1000),
-            "ms",
-            "tools:",
-            len(openrouter_tools)
-        )
-
-        # Conversation History - Load existing conversation from the
-        # in-memory store or initialize a new one with a system prompt
-        print("\n=== SESSION ID ===")
-        print(session_id)
 
         conn = get_connection()
 
@@ -134,42 +104,19 @@ async def ask_agent(
                 formatted_prompt,
                 conn
             )
-            print(
-                "initialize_conversation:",
-                round((time.perf_counter() - start) * 1000),
-                "ms"
-            )
 
             # Load persisted messages from the DB-backed store and append the
             # current user question, then persist the user message.
-            start = time.perf_counter()
             save_message(
                 session_id,
                 "user",
                 question,
                 conn
             )
-            print(
-                "save_message (user):",
-                round((time.perf_counter() - start) * 1000),
-                "ms"
-            )
 
-            start = time.perf_counter()
             messages = get_messages(
                 session_id,
                 conn
-            )
-            print(
-                "load_messages:",
-                round((time.perf_counter() - start) * 1000),
-                "ms",
-                "message count:",
-                len(messages)
-            )
-            print(
-                "Approx prompt chars:",
-                len(json.dumps(messages))
             )
 
             # ReAct Loop: ask the LLM for the next action, run tools if requested
@@ -185,20 +132,10 @@ async def ask_agent(
                     }
 
                 # Ask LLM what to do next (it may request tools)
-                print("MODEL:", "openai/gpt-4o-mini")
-                start = time.perf_counter()
-                print("Sending request to OpenRouter...")
                 response = call_llm(
                     messages=messages,
                     tools=openrouter_tools
                 )
-                print("Received response from OpenRouter")
-                print(
-                    "llm_call:",
-                    round((time.perf_counter() - start) * 1000),
-                    "ms"
-                )
-
                 message = response.choices[0].message
                 
                 print("\n=== MESSAGE ===")
@@ -225,11 +162,6 @@ async def ask_agent(
                         conn
                     )
                     
-                    print(
-                        "save_message (assistant):",
-                        round((time.perf_counter() - time.perf_counter()) * 1000),
-                        "ms"
-                    )
                     
                     return {
                         "answer": message.content,
@@ -413,14 +345,11 @@ async def ask_agent_stream(
     session_id: str,
     user_id: int
 ):
-    stream_start = time.perf_counter()
-
     print("\n===== ask_agent_stream START =====")
-
     yield 'data: {"type":"progress","message":"Starting"}\n\n'
-
     async with client:
-
+        progress = []
+        step_number = 1
         start = time.perf_counter()
         openrouter_tools = await get_openrouter_tools()
         print(
@@ -430,41 +359,25 @@ async def ask_agent_stream(
             "tools:",
             len(openrouter_tools)
         )
-
         conn = get_connection()
-
         try:
-
+            formatted_prompt = SYSTEM_PROMPT.format(user_id=user_id)
             start = time.perf_counter()
-            initialize_conversation(
-                session_id,
-                SYSTEM_PROMPT.format(user_id=user_id),
-                conn
-            )
+            initialize_conversation(session_id, formatted_prompt, conn)
             print(
                 "stream initialize_conversation:",
                 round((time.perf_counter() - start) * 1000),
                 "ms"
             )
-
             start = time.perf_counter()
-            save_message(
-                session_id,
-                "user",
-                question,
-                conn
-            )
+            save_message(session_id, "user", question, conn)
             print(
                 "stream save_message user:",
                 round((time.perf_counter() - start) * 1000),
                 "ms"
             )
-
             start = time.perf_counter()
-            messages = get_messages(
-                session_id,
-                conn
-            )
+            messages = get_messages(session_id, conn)
             print(
                 "stream get_messages:",
                 round((time.perf_counter() - start) * 1000),
@@ -474,93 +387,173 @@ async def ask_agent_stream(
                 "chars:",
                 len(json.dumps(messages))
             )
-
-            print("stream calling OpenRouter...")
-            start = time.perf_counter()
-            response = call_llm(
-                messages=messages,
-                tools=openrouter_tools,
-                stream=True
-            )
-            print(
-                "stream OpenRouter response object:",
-                round((time.perf_counter() - start) * 1000),
-                "ms"
-            )
-
-            full_answer = ""
-            chunk_count = 0
-            first_chunk_seen = False
-            loop_start = time.perf_counter()
-
-            for chunk in response:
-                chunk_count += 1
-
-                print("CHUNK:")
-                print(chunk)
-
-                if not first_chunk_seen:
-                    first_chunk_seen = True
-                    print(
-                        "stream first chunk:",
-                        round((time.perf_counter() - loop_start) * 1000),
-                        "ms"
-                    )
-
-                if chunk_count % 50 == 0:
-                    print(
-                        "stream chunks:",
-                        chunk_count,
-                        "answer chars:",
-                        len(full_answer),
-                        "elapsed seconds:",
-                        round(time.perf_counter() - stream_start, 1)
-                    )
-
-                if (time.perf_counter() - stream_start) > 120:
-                    print("stream timeout guard hit after 120 seconds")
+            MAX_ITERATIONS = 10
+            iteration = 0
+            assistant_text = ""
+            while True:
+                iteration += 1
+                if iteration > MAX_ITERATIONS:
                     break
-
-                if not chunk.choices:
-                    continue
-
-                delta = (chunk.choices[0].delta.content)
-
-                print("DELTA:", delta)
-
-                if delta is not None:
-
-                    full_answer += delta
-
-                    payload = json.dumps(
+                response = call_llm(
+                    messages=messages,
+                    tools=openrouter_tools,
+                    stream=True
+                )
+                tool_calls_accumulator = {}
+                assistant_text = ""
+                for chunk in response:
+                    if not chunk.choices:
+                        continue
+                    delta = chunk.choices[0].delta
+                    # ----------------------------
+                    # CASE 1: normal text response
+                    # ----------------------------
+                    if delta.content:
+                        assistant_text += delta.content
+                        payload = json.dumps(
+                            {
+                                "type": "delta",
+                                "delta": delta.content
+                            }
+                        )
+                        yield f"data: {payload}\n\n"
+                    # ----------------------------
+                    # CASE 2: tool call response
+                    # ----------------------------
+                    if delta.tool_calls:
+                        yield 'data: {"type":"progress","message":"Using tool"}\n\n'
+                        for tc in delta.tool_calls:
+                            idx = tc.index
+                            if idx not in tool_calls_accumulator:
+                                tool_calls_accumulator[idx] = {
+                                    "id": tc.id if tc.id else "",
+                                    "name": (
+                                        tc.function.name
+                                        if tc.function and tc.function.name
+                                        else ""
+                                    ),
+                                    "arguments": ""
+                                }
+                            else:
+                                if tc.id:
+                                    tool_calls_accumulator[idx]["id"] = tc.id
+                                if tc.function.name:
+                                    tool_calls_accumulator[idx]["name"] = tc.function.name
+                            if tc.function.arguments:
+                                tool_calls_accumulator[idx]["arguments"] += tc.function.arguments
+                # Process the outcome after the stream finishes
+                if not tool_calls_accumulator:
+                    messages.append(
                         {
-                            "type": "delta",
-                            "delta": delta
+                            "role": "assistant",
+                            "content": assistant_text
                         }
                     )
-
-                    yield f"data: {payload}\n\n"
-
+                    break
+                # Execute all accumulated tool calls
+                for idx, tc_data in sorted(tool_calls_accumulator.items()):
+                    tool_name = tc_data["name"]
+                    arguments = json.loads(tc_data["arguments"])
+                    try:
+                        tool_start = time.perf_counter()
+                        tool_result = await client.call_tool(
+                            tool_name,
+                            arguments
+                        )
+                        tool_elapsed = round((time.perf_counter() - tool_start) * 1000)
+                        if not tool_result.content:
+                            tool_text = f"Tool {tool_name} returned no content."
+                        else:
+                            tool_text = tool_result.content[0].text
+                        if tool_result.is_error:
+                            messages.append(
+                                {
+                                    "role": "user",
+                                    "content": f"Tool error:\n{tool_text}"
+                                }
+                            )
+                            progress.append(
+                                {
+                                    "step": step_number,
+                                    "tool": tool_name,
+                                    "arguments": arguments,
+                                    "summary": tool_text,
+                                    "duration_ms": tool_elapsed,
+                                    "status": "error"
+                                }
+                            )
+                            step_number += 1
+                            continue
+                        tool_data = None
+                        try:
+                            tool_data, compact_text = process_tool_result(
+                                tool_name,
+                                tool_text
+                            )
+                            print("Tool output chars:", len(tool_text))
+                            print("\nParsed Tool Data:")
+                            print(type(tool_data))
+                            print(tool_data)
+                        except Exception:
+                            print("\nTool result is not JSON.")
+                            compact_text = tool_text
+                        progress.append(
+                            {
+                                "step": step_number,
+                                "tool": tool_name,
+                                "arguments": arguments,
+                                "summary": summarize_tool_result(tool_data),
+                                "duration_ms": tool_elapsed,
+                                "status": "completed"
+                            }
+                        )
+                        step_number += 1
+                        messages.append(
+                            {
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": tc_data["id"] or f"call_{idx}",
+                                        "type": "function",
+                                        "function": {
+                                            "name": tool_name,
+                                            "arguments": json.dumps(arguments)
+                                        }
+                                    }
+                                ]
+                            }
+                        )
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_data["id"] or f"call_{idx}",
+                                "content": compact_text
+                            }
+                        )
+                    except Exception as e:
+                        print("\nTool Error:")
+                        print(e)
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": f"Tool {tool_name} failed with error:\n{str(e)}"
+                            }
+                        )
+            payload = json.dumps(
+                {
+                    "type": "complete",
+                    "progress": progress
+                }
+            )
+            yield f"data: {payload}\n\n"
             save_message(
                 session_id,
                 "assistant",
-                full_answer,
+                assistant_text,
                 conn
             )
-            print(
-                "stream complete:",
-                "chunks:",
-                chunk_count,
-                "answer chars:",
-                len(full_answer),
-                "total seconds:",
-                round(time.perf_counter() - stream_start, 1)
-            )
-
-            yield 'data: {"type":"complete"}\n\n'
-
         finally:
-
             conn.close()
             print("===== ask_agent_stream END =====\n")
 
