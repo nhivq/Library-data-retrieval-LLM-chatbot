@@ -536,9 +536,9 @@ async def ask_agent_stream(
                     }
                 )
 
-                    yield (
-                        f"data: {payload}\n\n"
-                    )
+                yield (
+                    f"data: {payload}\n\n"
+                )
 
             save_message(
                 session_id,
