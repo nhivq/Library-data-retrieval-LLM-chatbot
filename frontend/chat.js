@@ -51,13 +51,15 @@ async function handleSend() {
     method: 'POST',
 
     headers: {
-      'Content-Type':'application/json',
+      "Content-Type":"application/json",
+
+      "Authorization":
+      "Bearer " + localStorage.getItem("token")
     },
 
     body: JSON.stringify({
       message: text,
-      session_id:currentSessionId,
-      user_id: Number(Auth.get()),
+      session_id:currentSessionId
     }),
   }
 );

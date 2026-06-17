@@ -1,18 +1,22 @@
 import time
-
 from psycopg2.extras import RealDictCursor
 
-"""Service helpers for conversation and message persistence.
+"""
+Service helpers for conversation and message persistence.
 
-This module provides small helper functions that interact with the
-`conversations` and `messages` tables. Each function receives an active
-database connection object and manages its own cursor lifecycle. Errors
-are propagated after rolling back the transaction so callers can handle
-them appropriately.
+This module manages conversation ownership by associating
+conversations and messages with authenticated users.
+
+All database operations require user_id to ensure users can only
+access their own conversations.
+
+Functions receive an active database connection and manage their own
+cursor lifecycle. Errors rollback transactions before being propagated.
 """
 
 def get_or_create_conversation(
         session_id: str,
+        user_id: int,
         conn
 ) -> int:
     # Create a cursor that returns dict-like rows for easier field access
@@ -25,9 +29,10 @@ def get_or_create_conversation(
                        SELECT id 
                        FROM conversations 
                        WHERE session_id = %s
+                       AND user_id=%s
                        """
 
-        cursor.execute(query_select, (session_id,))
+        cursor.execute(query_select, (session_id, user_id))
 
         result = cursor.fetchone()
 
@@ -37,8 +42,8 @@ def get_or_create_conversation(
 
         # Otherwise insert a new conversation row and return the new id
         query_insert = """
-                       INSERT INTO conversations (session_id) 
-                       VALUES (%s) 
+                       INSERT INTO conversations (session_id, user_id) 
+                       VALUES (%s, %s) 
                        RETURNING id
                        """
 
@@ -46,11 +51,11 @@ def get_or_create_conversation(
 
         cursor.execute(
             query_insert,
-            (session_id,)
+            (session_id, user_id)
         )
 
         print(
-            "conversation select:",
+            "conversation insert:",
             round((time.perf_counter() - start) * 1000),
             "ms"
         )
@@ -84,6 +89,7 @@ def get_or_create_conversation(
 def initialize_conversation(
         session_id: str,
         system_prompt: str,
+        user_id: int,
         conn
 ):
     """
@@ -95,34 +101,44 @@ def initialize_conversation(
 
     conversation_id = get_or_create_conversation(
         session_id,
+        user_id,
         conn
     )
 
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        SELECT 1
-        FROM messages
-        WHERE conversation_id = %s
-        LIMIT 1
-        """,
-        (conversation_id,)
-    )
+    try:
 
-    exists = cursor.fetchone()
-
-    if not exists:
-
-        save_message(
-            session_id,
-            "system",
-            system_prompt,
-            conn
+        cursor.execute(
+            """
+            SELECT 1
+            FROM messages
+            WHERE conversation_id = %s
+            AND user_id=%s
+            LIMIT 1
+            """,
+            (conversation_id, user_id)
         )
+
+        exists = cursor.fetchone()
+
+        if not exists:
+
+            save_message(
+                session_id,
+                "system",
+                system_prompt,
+                user_id,
+                conn
+            )
+
+    finally:
+
+        cursor.close()
 
 
 def get_all_conversations(
+        user_id: int,
         conn
 ) -> list:
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -132,10 +148,11 @@ def get_all_conversations(
         query = """
             SELECT *
             FROM conversations
+            WHERE user_id = %s
             ORDER BY id;
             """
 
-        cursor.execute(query)
+        cursor.execute(query, (user_id,))
 
         conversations = cursor.fetchall()
 
@@ -150,11 +167,12 @@ def save_message(
         session_id: str,
         role: str,
         content: str,
+        user_id: int,
         conn
 ):
     start = time.perf_counter()
 
-    conversation_id = get_or_create_conversation(session_id, conn)
+    conversation_id = get_or_create_conversation(session_id, user_id, conn)
 
     print(
     "get_or_create_conversation:",
@@ -169,15 +187,15 @@ def save_message(
         # Insert a new message tied to the conversation id
         query = """
             INSERT INTO messages 
-                (conversation_id, role, content) 
+                (conversation_id, role, content, user_id) 
 
             VALUES
-                (%s, %s, %s)
+                (%s, %s, %s, %s)
             
                 RETURNING id
             """
 
-        cursor.execute(query, (conversation_id, role, content))
+        cursor.execute(query, (conversation_id, role, content, user_id))
 
         message = cursor.fetchone()
 
@@ -199,6 +217,7 @@ def save_message(
 
 def get_messages(
         session_id: str,
+        user_id: int,
         conn
 ) -> list:
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -216,11 +235,12 @@ def get_messages(
                     ON m.conversation_id = c.id
 
             WHERE c.session_id = %s
+            AND c.user_id=%s
 
             ORDER BY m.id ASC
             """
 
-        cursor.execute(query, (session_id,))
+        cursor.execute(query, (session_id, user_id))
 
         messages = cursor.fetchall()
 
@@ -234,6 +254,7 @@ def get_messages(
 
 def delete_conversation(
         session_id: str,
+        user_id: int,
         conn
 ):
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -245,9 +266,10 @@ def delete_conversation(
             DELETE 
             FROM conversations 
             WHERE session_id = %s
+            AND user_id=%s
             """
 
-        cursor.execute(query, (session_id,))
+        cursor.execute(query, (session_id, user_id))
 
         conn.commit()
 

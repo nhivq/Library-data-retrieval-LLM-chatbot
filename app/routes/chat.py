@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from app.schemas.chat_schema import ChatRequest
 from app.llm.llm_client import ask_agent_stream
+from app.core.dependencies import get_current_user
 
 
 router = APIRouter(
@@ -12,7 +13,8 @@ router = APIRouter(
 @router.post("/chat")
 # using async because ask_agent() is already async def ask_agent(...)
 async def chat(
-    request: ChatRequest
+    request: ChatRequest,
+    user=Depends(get_current_user)
 ):
 
     return StreamingResponse(
@@ -21,7 +23,7 @@ async def chat(
             request.session_id
             or
             "web-session",
-            request.user_id
+            user["user_id"]
         ),
         media_type="text/event-stream"
     )

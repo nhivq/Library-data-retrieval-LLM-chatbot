@@ -6,10 +6,21 @@ from fastapi import (
 from app.database.connection import get_db
 from app.schemas.user_schemas import RegisterRequest, LoginRequest
 from app.services import auth_service 
+from app.core.dependencies import get_current_user
+
 
 router=APIRouter(
     tags=["Authentication"]
 )
+
+
+@router.get("/me")
+def get_me(
+    user=Depends(get_current_user)
+):
+
+    return user
+
 
 # ---------- Register account ----------
 @router.post("/register")

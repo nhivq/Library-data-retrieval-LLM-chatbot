@@ -89,21 +89,21 @@ async def ask_agent_stream(
         try:
             formatted_prompt = SYSTEM_PROMPT.format(user_id=user_id)
             start = time.perf_counter()
-            initialize_conversation(session_id, formatted_prompt, conn)
+            initialize_conversation(session_id, formatted_prompt, user_id, conn)
             print(
                 "stream initialize_conversation:",
                 round((time.perf_counter() - start) * 1000),
                 "ms"
             )
             start = time.perf_counter()
-            save_message(session_id, "user", question, conn)
+            save_message(session_id, "user", question, user_id, conn)
             print(
                 "stream save_message user:",
                 round((time.perf_counter() - start) * 1000),
                 "ms"
             )
             start = time.perf_counter()
-            messages = get_messages(session_id, conn)
+            messages = get_messages(session_id, user_id, conn)
             print(
                 "stream get_messages:",
                 round((time.perf_counter() - start) * 1000),

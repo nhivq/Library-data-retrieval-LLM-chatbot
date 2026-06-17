@@ -6,6 +6,7 @@ from fastapi import (
 from app.database.connection import get_db
 from app.schemas.bookmark_schemas import Bookmark
 from app.services import bookmark_service
+from app.core.dependencies import get_current_user
 
 router=APIRouter(
     tags=["Bookmarks"]
@@ -15,12 +16,13 @@ router=APIRouter(
 @router.post("/bookmarks")
 def save_bookmark(
         bookmark: Bookmark,
+        user=Depends(get_current_user),
         conn=Depends(get_db)
 ):
     try:
 
         return bookmark_service.save_bookmark(
-            user_id=bookmark.user_id,
+            user_id=user["user_id"],
             work_key=bookmark.work_key,
             conn=conn
         )
@@ -38,13 +40,13 @@ def save_bookmark(
 # /bookmarks?user_id=1
 @router.get("/bookmarks")
 def get_bookmark(
-        user_id: int,
+        user=Depends(get_current_user),
         conn=Depends(get_db)
 ):
     try:
 
         return bookmark_service.get_bookmark(
-            user_id=user_id,
+            user_id=user["user_id"],
             conn=conn
         )
 
@@ -61,7 +63,7 @@ def get_bookmark(
 @router.delete("/bookmarks/{work_key:path}")
 def delete_bookmark(
         work_key: str,
-        user_id: int,
+        user=Depends(get_current_user),
         conn=Depends(get_db)
 ):
     cursor = conn.cursor()
@@ -69,7 +71,7 @@ def delete_bookmark(
     try:
 
         return bookmark_service.delete_bookmark(
-            user_id=user_id,
+            user_id=user["user_id"],
             work_key=work_key,
             conn=conn
         )
