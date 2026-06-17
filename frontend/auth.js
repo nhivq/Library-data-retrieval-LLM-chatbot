@@ -1,12 +1,86 @@
 // ── Config ────────────────────────────────────────────────────
 const API_BASE = "https://library-data-retrieval-llm-chatbot-619h.onrender.com";
 
+// ── Reusable authenticated fetch ──────────────────────────────
+async function authFetch(
+    url,
+    options={}
+)
+{
+  let token = Auth.getAccessToken();
+
+  options.headers = {
+    ...options.headers
+  };
+
+  if(token){
+    options.header.Authorization = `Bearer ${token}`;
+  }
+
+
+  let response = await fetch(
+        url,
+        options
+      );
+
+  if(response.status === 401){const refreshed = await refreshAccessToken();
+
+    if(!refreshed){
+      logout();
+      return response;
+    }
+
+    token = Auth.getAccessToken();
+
+    options.headers.Authorization = `Bearer ${token}`;
+
+    response = await fetch(
+        url,
+        options
+      );
+  }
+
+  return response;
+}
+
 // ── Storage helpers ───────────────────────────────────────────
 const Auth = {
-  save: (userId) => sessionStorage.setItem("user_id", userId),
-  get: () => sessionStorage.getItem("user_id"),
-  clear: () => sessionStorage.removeItem("user_id"),
-  isLoggedIn: () => !!sessionStorage.getItem("user_id"),
+
+  saveAccessToken:(token)=>{
+    localStorage.setItem(
+      "access_token",
+      token
+    );
+  },
+
+  saveTokens: (data) => {
+    localStorage.setItem(
+      "access_token",
+      data.access_token
+    );
+
+    localStorage.setItem(
+      "refresh_token",
+      data.refresh_token
+    );
+  },
+
+  getAccessToken: () => {
+    return localStorage.getItem("access_token");
+  },
+
+  getRefreshToken: () => {
+    return localStorage.getItem("refresh_token");
+  },
+
+  clear: () => {localStorage.removeItem("access_token");
+
+    localStorage.removeItem("refresh_token");
+  },
+
+  isLoggedIn: () => {
+    return !!localStorage.getItem("access_token");
+  }
 };
 
 // ── API service ───────────────────────────────────────────────
@@ -38,6 +112,40 @@ const ApiService = {
     return data; // { message }
   },
 };
+
+// ── Refresh function ──────────────────────────────────────────
+async function refreshAccessToken(){
+
+  const refreshToken = Auth.getRefreshToken();
+
+  if(!refreshToken)
+    return false;
+
+  const res = await fetch(`${API_BASE}/refresh`,
+    {
+      method:"POST",
+
+      headers:{"Content-Type":"application/json"},
+
+      body:JSON.stringify({refresh_token:refreshToken})
+    }
+  );
+
+  if(!res.ok){
+
+    Auth.clear();
+
+    return false;
+  }
+
+  const data = await res.json();
+
+   Auth.saveAccessToken(
+        data.access_token
+    );
+
+  return true;
+}
 
 // ── UI helpers ────────────────────────────────────────────────
 function showError(msg) {
@@ -132,7 +240,7 @@ function initLogin() {
 
     try {
       const data = await ApiService.login(username, password);
-      Auth.save(data.user_id);
+      Auth.saveTokens(data);
       window.location.href = "chat.html";
     } catch (err) {
       showError(err.message);

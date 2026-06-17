@@ -46,15 +46,12 @@ async function handleSend() {
   const stopTimer   = startLiveTimer(thinkingRow);
 
   try {
-    const response = await fetch(`${API_BASE}/chat`,
+    const response = await authFetch(`${API_BASE}/chat`,
   {
     method: 'POST',
 
     headers: {
       "Content-Type":"application/json",
-
-      "Authorization":
-      "Bearer " + localStorage.getItem("token")
     },
 
     body: JSON.stringify({

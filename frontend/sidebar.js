@@ -126,11 +126,7 @@ async function fetchBookmarks() {
   list.innerHTML = '<p class="sidebar-empty">Loading…</p>';
 
   try {
-    const res = await fetch(`${API_BASE}/bookmarks`, {
-      headers: {
-        "Authorization": "Bearer " + localStorage.getItem("token")
-      }
-    });
+    const res = await authFetch(`${API_BASE}/bookmarks`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
@@ -172,11 +168,8 @@ async function removeBookmark(bm) {
   if (!userId) return;
 
   try {
-    const res = await fetch(`${API_BASE}/bookmarks/${bm.id || bm.work_key}`, {
-      method: 'DELETE',
-      headers: {
-        "Authorization": "Bearer " + localStorage.getItem("token")
-      }
+    const res = await authFetch(`${API_BASE}/bookmarks/${bm.id || bm.work_key}`, {
+      method: 'DELETE'
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     fetchBookmarks(); // refresh list
