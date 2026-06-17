@@ -79,6 +79,10 @@ CREATE TABLE conversations (
 
     session_id VARCHAR(255) UNIQUE NOT NULL,
 
+    user_id INTEGER
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
