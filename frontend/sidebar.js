@@ -9,105 +9,102 @@
 // Stored in sessionStorage as an array of conversation objects:
 // [{ id, label, createdAt, messages: [{role, text}] }, ...]
 
-const ConvHistory = {
+async function fetchConversations(){
 
-  _key: 'conversations',
+  const res = await authFetch(
+    `${API_BASE}/conversations/`
+  );
 
-  load() {
-    try {
-      return JSON.parse(sessionStorage.getItem(this._key)) || [];
-    } catch { return []; }
-  },
-
-  save(convs) {
-    sessionStorage.setItem(this._key, JSON.stringify(convs));
-  },
-
-  // Called by chat.js after each assistant reply
-  addMessage(userText, aiText) {
-    const convs = this.load();
-
-    // Always append to the active conversation
-    let active = convs.find(c => c.active);
-
-    if (!active) {
-      // Start a new conversation automatically
-      active = this._createNew(convs);
-    }
-
-    active.messages.push({ role: 'user', text: userText });
-    active.messages.push({ role: 'ai',   text: aiText  });
-
-    // Use first user message as label (truncated)
-    if (active.messages.filter(m => m.role === 'user').length === 1) {
-      active.label = userText.length > 36
-        ? userText.slice(0, 36) + '…'
-        : userText;
-    }
-
-    this.save(convs);
-    renderConvList();
-  },
-
-  newConversation() {
-    const convs = this.load();
-    const entry = this._createNew(convs);
-    this.save(convs);
-    renderConvList();
-    currentSessionId = entry.sessionId; // switch chat.js to the new session
-  },
-
-  switchTo(id) {
-    const convs = this.load();
-    convs.forEach(c => c.active = (c.id === id));
-    this.save(convs);
-    renderConvList();
-
-    const target = convs.find(c => c.id === id);
-    if (target) {
-      currentSessionId = target.sessionId; // tell chat.js which session to use
-      loadConversation(target.messages);
-    }
-  },
-
-  _createNew(convs) {
-    convs.forEach(c => c.active = false);
-    const sessionId = crypto.randomUUID();
-    const entry = {
-      id: sessionId,          // reuse UUID as both the list key and backend session_id
-      sessionId,
-      label: 'New conversation',
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      messages: [],
-      active: true,
-    };
-    convs.unshift(entry); // newest first
-    return entry;
-  },
-
-};
-
-// ── Render Conversation List ──────────────────────────────────
-function renderConvList() {
-  const list  = document.getElementById('convList');
-  const convs = ConvHistory.load();
-
-  if (!convs.length) {
-    list.innerHTML = '<p class="sidebar-empty">No conversations yet.</p>';
+  if(!res.ok){
+    console.error(
+      "Failed loading conversations"
+    );
     return;
   }
 
-  list.innerHTML = '';
-  convs.forEach(conv => {
-    const item = document.createElement('div');
-    item.className = 'conv-item' + (conv.active ? ' active' : '');
-    item.innerHTML = `
-      <span class="conv-item-label">${escapeHtml(conv.label)}</span>
-      <span class="conv-item-time">${conv.createdAt}</span>
-    `;
-    item.addEventListener('click', () => ConvHistory.switchTo(conv.id));
-    list.appendChild(item);
-  });
+  const data = await res.json();
+
+
+  renderBackendConversations(data);
+}
+
+const ConvHistory = {
+
+  addMessage(userText, aiText) {
+    // Backend already saved it.
+    // Just refresh sidebar.
+    setTimeout(
+        fetchConversations,
+        300
+    );
+
+  },
+
+  newConversation() {
+
+    const sessionId = crypto.randomUUID();
+
+    currentSessionId = sessionId;
+
+    loadConversation([]);
+
+  },
+
+  switchTo(sessionId) {
+
+    currentSessionId = sessionId;
+
+    loadConversationFromBackend(sessionId);
+  }
+};
+
+// ── Render Conversation List ──────────────────────────────────
+function renderBackendConversations(convs){
+
+ const list = document.getElementById("convList");
+
+ list.innerHTML="";
+
+
+ convs.forEach(conv=>{
+
+ const item = document.createElement("div");
+
+ item.className="conv-item";
+
+ item.innerHTML=`
+ <span>
+ ${conv.session_id}
+ </span>
+ `;
+ item.onclick=()=>{
+    currentSessionId = conv.session_id;
+    loadConversationFromBackend(conv.session_id);
+ };
+ list.appendChild(item);
+ });
+}
+
+// ── Loading conversation ──────────────────────────────────────
+async function loadConversationFromBackend(sessionId){
+
+ try {
+
+    const res = await authFetch(
+      `${API_BASE}/conversations/${sessionId}`
+    );
+
+    if(!res.ok)
+        throw new Error("Conversation load failed");
+
+    const messages = await res.json();
+
+    loadConversation(messages);
+
+ }
+ catch(err){
+    console.error(err);
+ }
 }
 
 // ── New Chat button ───────────────────────────────────────────
@@ -164,8 +161,6 @@ function renderBookmarks(bookmarks) {
 }
 
 async function removeBookmark(bm) {
-  const userId = Auth.get();
-  if (!userId) return;
 
   try {
     const res = await authFetch(`${API_BASE}/bookmarks/${bm.id || bm.work_key}`, {
@@ -194,19 +189,8 @@ function escapeHtml(str) {
 // Sync currentSessionId with the active conversation on load,
 // or seed the first conversation entry with the UUID chat.js already generated.
 // setTimeout 0 ensures chat.js has fully run before we reference currentSessionId.
-setTimeout(function initSession() {
-  const convs = ConvHistory.load();
-  const active = convs.find(c => c.active);
-  if (active) {
-    currentSessionId = active.sessionId;
-  } else {
-    // First ever load — register the UUID chat.js created as the first conversation
-    const entry = ConvHistory._createNew(convs);
-    entry.sessionId = currentSessionId; // currentSessionId was set by chat.js on load
-    entry.id = currentSessionId;
-    ConvHistory.save(convs);
-  }
+// ── Init ──────────────────────────────────────────────
+setTimeout(() => {
+    fetchConversations();
+    fetchBookmarks();
 }, 0);
-
-renderConvList();
-fetchBookmarks();

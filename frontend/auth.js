@@ -10,7 +10,7 @@ async function authFetch(
   let token = Auth.getAccessToken();
 
   options.headers = {
-    ...options.headers
+    ...(options.headers || {})
   };
 
   if(token){
