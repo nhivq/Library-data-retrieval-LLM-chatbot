@@ -126,7 +126,7 @@ def initialize_conversation(
             WHERE conversation_id = %s
             LIMIT 1
             """,
-            (conversation_id)
+            (conversation_id,)
         )
 
         exists = cursor.fetchone()
@@ -291,4 +291,3 @@ def delete_conversation(
     finally:
 
         cursor.close()
-
