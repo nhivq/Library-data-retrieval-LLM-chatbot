@@ -14,7 +14,7 @@ async function authFetch(
   };
 
   if(token){
-    options.header.Authorization = `Bearer ${token}`;
+    options.headers.Authorization = `Bearer ${token}`;
   }
 
 
@@ -86,7 +86,7 @@ const Auth = {
 // ── API service ───────────────────────────────────────────────
 // When you add JWT later:
 //   1. Save token: sessionStorage.setItem('token', data.access_token)
-//   2. Add header: 'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+//   2. Add headers: 'Authorization': `Bearer ${sessionStorage.getItem('token')}`
 const ApiService = {
   async login(username, password) {
     const res = await fetch(`${API_BASE}/login`, {
