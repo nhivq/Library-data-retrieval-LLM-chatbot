@@ -28,6 +28,14 @@ async function fetchConversations(){
   renderBackendConversations(data);
 }
 
+function formatSessionLabel(index) {
+  return `Conversation ${index + 1}`;
+}
+
+function shortSessionId(sessionId) {
+  return sessionId.length > 12 ? `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}` : sessionId;
+}
+
 const ConvHistory = {
 
   addMessage(userText, aiText) {
@@ -66,23 +74,25 @@ function renderBackendConversations(convs){
  list.innerHTML="";
 
 
- convs.forEach(conv=>{
+  convs.forEach((conv, index)=>{
 
- const item = document.createElement("div");
+  const item = document.createElement("div");
 
- item.className="conv-item";
+  item.className="conv-item";
 
- item.innerHTML=`
- <span>
- ${conv.session_id}
- </span>
- `;
- item.onclick=()=>{
-    currentSessionId = conv.session_id;
-    loadConversationFromBackend(conv.session_id);
- };
- list.appendChild(item);
- });
+  item.innerHTML=`
+  <span class="conv-item-label">${escapeHtml(formatSessionLabel(index))}</span>
+  <span class="conv-item-time">${escapeHtml(shortSessionId(conv.session_id))}</span>
+  `;
+  item.onclick=()=>{
+     currentSessionId = conv.session_id;
+     loadConversationFromBackend(conv.session_id);
+  };
+  if (conv.session_id === currentSessionId) {
+    item.classList.add('active');
+  }
+  list.appendChild(item);
+  });
 }
 
 // ── Loading conversation ──────────────────────────────────────
