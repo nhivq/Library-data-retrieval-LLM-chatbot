@@ -24,6 +24,16 @@ def get_or_create_conversation(
 
     try:
 
+        # Debug
+        cursor.execute("""
+        SELECT current_database(), current_schema()
+        """)
+
+        print(
+            "DB INFO:",
+            cursor.fetchone()
+        )
+
         # Try to find an existing conversation for this session_id
         query_select = """
                        SELECT id 
@@ -114,10 +124,9 @@ def initialize_conversation(
             SELECT 1
             FROM messages
             WHERE conversation_id = %s
-            AND user_id=%s
             LIMIT 1
             """,
-            (conversation_id, user_id)
+            (conversation_id)
         )
 
         exists = cursor.fetchone()
@@ -187,15 +196,15 @@ def save_message(
         # Insert a new message tied to the conversation id
         query = """
             INSERT INTO messages 
-                (conversation_id, role, content, user_id) 
+                (conversation_id, role, content) 
 
             VALUES
-                (%s, %s, %s, %s)
+                (%s, %s, %s)
             
                 RETURNING id
             """
 
-        cursor.execute(query, (conversation_id, role, content, user_id))
+        cursor.execute(query, (conversation_id, role, content))
 
         message = cursor.fetchone()
 

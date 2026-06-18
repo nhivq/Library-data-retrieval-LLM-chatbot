@@ -71,7 +71,7 @@ async def ask_agent_stream(
     session_id: str,
     user_id: int
 ):
-    print("\n===== ask_agent_stream START =====")
+    print("\n===== Stream START")
     yield 'data: {"type":"progress","message":"Starting"}\n\n'
     async with client:
         progress = []

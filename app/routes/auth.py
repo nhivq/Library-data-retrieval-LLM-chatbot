@@ -4,10 +4,11 @@ from fastapi import (
     Depends
 )
 from app.database.connection import get_db
+from app.schemas.auth_schemas import RefreshRequest
 from app.schemas.user_schemas import RegisterRequest, LoginRequest
 from app.services import auth_service 
-from app.core.dependencies import get_current_user, decode_access_token
-from app.core.security import create_access_token, create_refresh_token
+from app.core.dependencies import get_current_user
+from app.core.security import create_access_token, decode_refresh_token
 
 
 router=APIRouter(
@@ -25,17 +26,14 @@ def get_me(
 
 @router.post("/refresh")
 def refresh_token(
-    refresh_token: str
+    payload: RefreshRequest
 ):
     
     try:
 
-        payload = decode_access_token(refresh_token)
-
-        if payload.get("type") != "refresh":
-            raise Exception()
+        token_payload = decode_refresh_token(payload.refresh_token)
         
-        user_id = payload["sub"]
+        user_id = token_payload["sub"]
 
         new_access_token = create_access_token(
             {"sub": user_id}

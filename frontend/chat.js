@@ -64,107 +64,54 @@ async function handleSend() {
 if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
 
     const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let answer = '';
+    let progress = [];
 
-const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-let answer = '';
+      buffer += decoder.decode(value, { stream: true });
 
-let progress = [];
+      let boundary;
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const event = buffer.slice(0, boundary).trim();
+        buffer = buffer.slice(boundary + 2);
 
-while (true) {
+        if (!event.startsWith('data:')) continue;
 
-  const {done,value} = await reader.read();
+        try {
+          const data = JSON.parse(event.replace(/^data:\s*/, ''));
 
-  if (done)
-    break;
+          if (data.type === 'progress') {
+            progress = [{
+              step: 1,
+              tool: 'assistant',
+              summary: data.message,
+              duration_ms: 0,
+              status: 'running',
+            }];
+            updateThinkingProgress(thinkingRow, progress);
+          }
 
-  const chunk =decoder.decode(value, {stream:true});
+          if (data.type === 'delta') {
+            stopTimer();
+            answer += data.delta;
+            replaceWithAnswer(thinkingRow, answer, progress);
+          }
 
-  const events =chunk.split('\n\n');
-
-  for (const event of events) {
-
-    if (!event.startsWith('data:'))
-      continue;
-
-      try {
-
-      const data = JSON.parse(event.replace('data:','')
-        );
-
-      console.log(
-        "EVENT:",
-        data
-      );
-
-      if (
-        data.type === 'progress'
-      ) {
-
-        progress = [
-          {
-            step: 1,
-
-            tool:
-              "assistant",
-
-            summary:
-              data.message,
-
-            duration_ms:
-              0,
-
-            status:
-              "running",
-          },
-        ];
-
-        updateThinkingProgress(
-          thinkingRow,
-          progress
-        );
-      }
-
-
-      if (data.type === "delta") {
-
-        stopTimer();
-
-        answer +=
-          data.delta;
-
-        replaceWithAnswer(
-          thinkingRow,
-          answer,
-          progress
-        );
-
-      }
-
-
-      if (
-        data.type === 'complete'
-      ) {
-
-        if (data.progress) {
-          progress = data.progress;
+          if (data.type === 'complete') {
+            if (data.progress) progress = data.progress;
+            replaceWithAnswer(thinkingRow, answer, progress);
+            ConvHistory.addMessage(text, answer);
+          }
+        } catch (e) {
+          console.log('Invalid SSE:', event);
         }
-        replaceWithAnswer(
-          thinkingRow,
-          answer,
-          progress
-        );
-        ConvHistory.addMessage(
-          text,
-          answer
-        );
-
       }
-        }
-
-    catch (e) {
-      console.log('Invalid SSE:', event);
-    }}}
+    }
 
   } catch (err) {
     console.error('Chat error:', err);
@@ -423,5 +370,5 @@ function setInputDisabled(disabled) {
 
 function loadConversation(messages) {
   chatArea.innerHTML = '';
-  messages.forEach(({ role, text }) => appendMessage(role, text));
+  messages.forEach(({ role, text, content }) => appendMessage(role, text ?? content ?? ''));
 }

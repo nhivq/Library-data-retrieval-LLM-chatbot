@@ -17,7 +17,7 @@ def get_current_user(
 
         payload = decode_access_token(token)
 
-        user_id = int(payload["sub"])
+        user_id = int(str(payload["sub"]))
 
         return {"user_id": user_id}
     

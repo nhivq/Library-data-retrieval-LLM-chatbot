@@ -49,3 +49,17 @@ def decode_access_token(token:str):
     )
 
     return payload
+
+
+def decode_refresh_token(token: str):
+
+    payload = jwt.decode(
+        token,
+        JWT_SECRET_KEY,
+        algorithms=[JWT_ALGORITHM]
+    )
+
+    if payload.get("type") != "refresh":
+        raise ValueError("Invalid refresh token")
+
+    return payload
