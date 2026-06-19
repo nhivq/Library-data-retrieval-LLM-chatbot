@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.routes.books import router as books_router
 from app.routes.bookmarks import router as bookmarks_router
@@ -7,8 +8,17 @@ from app.routes.authors import router as authors_router
 from app.routes.auth import router as auth_router
 from app.routes.chat import router as chat_router
 from app.routes.conversation import router as conversation_router
+from app.core.config import SESSION_SECRET_KEY
 
 app = FastAPI()
+
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET_KEY,
+    same_site="lax",
+    https_only=False
+)
 
 # Fix CORS issue
 # By default, browsers only allow api calls on the same .com/ IP address
@@ -17,14 +27,17 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
 
-    allow_origins=["*"], # Allow requests from ANY websites/ origin. This is for practice only, later -> specific origin
-
+    allow_origins=[ # Allow requests from websites/ origin.
+        "https://library-data-retrieval-llm-chatbot.vercel.app/",
+        "http://localhost:5500/frontend"
+        ], 
     allow_credentials=True, # Allow browser to include credentials
 
     allow_methods=["*"], # Allow all HTTP methods (Get, Post, Put, Patch, Delete, etc.)
 
     allow_headers=["*"] # Allow all request headers (Content-Type, Authorization)
 )
+
 
 app.include_router(
     books_router

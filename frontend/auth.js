@@ -214,6 +214,25 @@ function initLogin() {
 
   const form = document.getElementById("loginForm");
   const submitBtn = document.getElementById("submitBtn");
+   // Google OAuth button
+  const googleBtn =
+      document.getElementById(
+          "googleLoginBtn"
+      );
+
+  if(googleBtn){
+
+      googleBtn.addEventListener(
+          "click",
+          () => {
+
+              window.location.href =
+                  `${API_BASE}/auth/google`;
+
+          }
+      );
+
+  }
   submitBtn.dataset.label = "Login";
 
   form.addEventListener("submit", async (e) => {

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Login success</title>
+</head>
+
+
+<body>
+
+<p>
+Logging in...
+</p>
+
+
+<script src="auth.js"></script>
+
+<script>
+
+const params =
+    new URLSearchParams(
+        window.location.search
+    );
+
+
+const access =
+    params.get("access");
+
+const refresh =
+    params.get("refresh");
+
+
+if(access && refresh){
+
+    Auth.saveTokens({
+        access_token: access,
+        refresh_token: refresh
+    });
+
+
+    window.location.href =
+        "chat.html";
+
+}
+else{
+
+    document.body.innerHTML =
+        "OAuth login failed";
+
+}
+
+</script>
+
+</body>
+
+</html>

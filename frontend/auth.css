@@ -204,6 +204,72 @@ body {
   transform: none;
 }
 
+/* ── OAuth Divider ────────────────────────────────────────── */
+.oauth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.oauth-divider::before,
+.oauth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Google Login Button ─────────────────────────────────── */
+
+.google-btn {
+  width: 100%;
+  margin-top: 2px;
+  background: linear-gradient(180deg, #fffefc 0%, #fff7fb 100%);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    box-shadow 0.18s,
+    transform 0.1s;
+}
+
+
+.google-btn:hover {
+
+  background: #fff8fb;
+
+  box-shadow:
+    0 4px 14px rgba(0,0,0,0.08);
+}
+
+.google-btn:active {
+  transform: scale(0.99);
+}
+
+.google-icon {
+
+  width: 18px;
+  height: 18px;
+}
+
 /* ── Footer link ──────────────────────────────────────────── */
 .auth-footer {
   text-align: center;
