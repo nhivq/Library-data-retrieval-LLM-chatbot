@@ -72,6 +72,10 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
+        stopTimer();
+        if (answer || progress.length > 0) {
+          replaceWithAnswer(thinkingRow, answer, progress);
+        }
         console.log("stream finished");
         break;
       }
@@ -106,6 +110,7 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
           }
 
           if (data.type === 'complete') {
+            stopTimer();
             if (data.progress) progress = data.progress;
             replaceWithAnswer(thinkingRow, answer, progress);
             ConvHistory.addMessage(text, answer);

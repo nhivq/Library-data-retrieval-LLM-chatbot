@@ -133,6 +133,7 @@ async def ask_agent_stream(
                     tools=openrouter_tools,
                     stream=True
                 )
+                print("stream call_llm started:", iteration)
                 # Initialize an accumulator to assemble stream chunks of tool calls.
                 # This is necessary because arguments and names are received piece-by-piece.
                 tool_calls_accumulator = {}
@@ -158,6 +159,7 @@ async def ask_agent_stream(
                     # CASE 2: tool call response
                     # ----------------------------
                     if delta.tool_calls:
+                        print("stream tool_calls chunk received:", iteration)
                         # Emit progress to let the frontend know a tool execution has started.
                         yield 'data: {"type":"progress","message":"Using tool"}\n\n'
                         for tc in delta.tool_calls:
@@ -182,6 +184,7 @@ async def ask_agent_stream(
                 # If no tool calls were requested during the stream, this is the final assistant response.
                 # We append it to the in-memory context and break out of the ReAct loop.
                 if not tool_calls_accumulator:
+                    print("stream no tool calls; final answer ready:", len(assistant_text))
                     messages.append(
                         {
                             "role": "assistant",
@@ -193,13 +196,14 @@ async def ask_agent_stream(
                 for idx, tc_data in sorted(tool_calls_accumulator.items()):
                     tool_name = tc_data["name"]
                     arguments = json.loads(tc_data["arguments"])
-                # Inject authenticated user_id only for bookmark operations
-                if tool_name in [
-                    "save_bookmarks",
-                    "get_bookmarks",
-                    "delete_bookmarks"
-                ]:
-                    arguments["user_id"] = user_id
+                    print("stream executing tool:", tool_name)
+                    # Inject authenticated user_id only for bookmark operations.
+                    if tool_name in [
+                        "save_bookmarks",
+                        "get_bookmarks",
+                        "delete_bookmarks"
+                    ]:
+                        arguments["user_id"] = user_id
                     try:
                         tool_start = time.perf_counter()
                         # Call the MCP tool via the active fastmcp client.
