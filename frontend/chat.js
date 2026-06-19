@@ -284,6 +284,10 @@ function renderMarkdown(text) {
   html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  html = html.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
   html = html.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
@@ -294,17 +298,41 @@ function renderMarkdown(text) {
     return `<ul>${items}</ul>`;
   });
 
-  html = html.replace(/(^\d+\. .+\n?)+/gm, match => {
-    const items = match.trim().split('\n')
-      .map(line => `<li>${line.replace(/^\d+\. /, '')}</li>`).join('');
-    return `<ol>${items}</ol>`;
-  });
-
   html = html.replace(/^(---|\*\*\*)$/gm, '<hr>');
 
   html = html.split(/\n{2,}/).map(block => {
-    if (/^<(h[1-3]|ul|ol|pre|hr)/.test(block.trim())) return block;
-    return `<p>${block.trim().replace(/\n/g, '<br>')}</p>`;
+    const lines = block.split('\n');
+    const orderedItems = [];
+    let currentItem = null;
+
+    for (const rawLine of lines) {
+      const line = rawLine.trimEnd();
+      const match = line.match(/^(\d+)\.\s+(.*)$/);
+
+      if (match) {
+        if (currentItem !== null) orderedItems.push(currentItem);
+        currentItem = match[2];
+        continue;
+      }
+
+      if (currentItem !== null) {
+        if (line.trim() === '') {
+          currentItem += '<br>';
+        } else {
+          currentItem += `<br>${line.trim()}`;
+        }
+      }
+    }
+
+    if (currentItem !== null) orderedItems.push(currentItem);
+
+    if (orderedItems.length > 0) {
+      const items = orderedItems.map(item => `<li>${item}</li>`).join('');
+      const prefix = block.replace(/^(?:\d+\.\s+.*(?:\n|$))+/m, '').trim();
+      return prefix ? `${prefix}<ol>${items}</ol>` : `<ol>${items}</ol>`;
+    }
+
+    return block;
   }).join('\n');
 
   return html;
