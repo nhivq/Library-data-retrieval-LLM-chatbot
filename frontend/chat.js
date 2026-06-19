@@ -13,7 +13,7 @@ const quickActionsList = document.getElementById('quickActionsList');
 
 const QUICK_ACTIONS = [
   'Find fantasy books',
-  'Recommend a book',
+  'Save all books to bookmark',
   'Search authors',
   'My bookmarks',
   'Find highly rated books'
