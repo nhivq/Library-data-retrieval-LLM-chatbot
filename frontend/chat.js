@@ -300,40 +300,76 @@ function renderMarkdown(text) {
 
   html = html.replace(/^(---|\*\*\*)$/gm, '<hr>');
 
-  html = html.split(/\n{2,}/).map(block => {
-    const lines = block.split('\n');
-    const orderedItems = [];
-    let currentItem = null;
+  const lines = html.split('\n');
+  const out = [];
+  let paragraph = [];
+  let ordered = [];
+  let unordered = [];
 
-    for (const rawLine of lines) {
-      const line = rawLine.trimEnd();
-      const match = line.match(/^(\d+)\.\s+(.*)$/);
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      out.push(`<p>${paragraph.join('<br>')}</p>`);
+      paragraph = [];
+    }
+  };
 
-      if (match) {
-        if (currentItem !== null) orderedItems.push(currentItem);
-        currentItem = match[2];
-        continue;
-      }
+  const flushOrdered = () => {
+    if (ordered.length) {
+      out.push(`<ol>${ordered.map(item => `<li>${item}</li>`).join('')}</ol>`);
+      ordered = [];
+    }
+  };
 
-      if (currentItem !== null) {
-        if (line.trim() === '') {
-          currentItem += '<br>';
-        } else {
-          currentItem += `<br>${line.trim()}`;
-        }
-      }
+  const flushUnordered = () => {
+    if (unordered.length) {
+      out.push(`<ul>${unordered.map(item => `<li>${item}</li>`).join('')}</ul>`);
+      unordered = [];
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    if (!line.trim()) {
+      flushParagraph();
+      flushOrdered();
+      flushUnordered();
+      continue;
     }
 
-    if (currentItem !== null) orderedItems.push(currentItem);
-
-    if (orderedItems.length > 0) {
-      const items = orderedItems.map(item => `<li>${item}</li>`).join('');
-      const prefix = block.replace(/^(?:\d+\.\s+.*(?:\n|$))+/m, '').trim();
-      return prefix ? `${prefix}<ol>${items}</ol>` : `<ol>${items}</ol>`;
+    const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+    if (orderedMatch) {
+      flushParagraph();
+      flushUnordered();
+      ordered.push(orderedMatch[2]);
+      continue;
     }
 
-    return block;
-  }).join('\n');
+    const unorderedMatch = line.match(/^[-*]\s+(.*)$/);
+    if (unorderedMatch) {
+      flushParagraph();
+      flushOrdered();
+      unordered.push(unorderedMatch[1]);
+      continue;
+    }
+
+    if (ordered.length) {
+      ordered[ordered.length - 1] += `<br>${line}`;
+      continue;
+    }
+
+    if (unordered.length) {
+      unordered[unordered.length - 1] += `<br>${line}`;
+      continue;
+    }
+
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  flushOrdered();
+  flushUnordered();
+
+  html = out.join('\n');
 
   return html;
 }
