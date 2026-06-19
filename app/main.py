@@ -28,7 +28,7 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[ # Allow requests from websites/ origin.
-        "https://library-data-retrieval-llm-chatbot.vercel.app/",
+        "https://library-data-retrieval-llm-chatbot.vercel.app",
         "http://localhost:5500/frontend"
         ], 
     allow_credentials=True, # Allow browser to include credentials

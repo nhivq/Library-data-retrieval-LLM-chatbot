@@ -99,6 +99,9 @@ def get_author(
     author_starts_with:
     Search for authors whose names begin with specific letters.
 
+    author_ends_with:
+    Search for authors whose names end with specific letters.
+
     Returns:
     - author name
     - author key
@@ -108,6 +111,7 @@ def get_author(
 def search_authors(
         author_name: str | None = None,
         author_starts_with: str | None = None,
+        author_ends_with: str | None = None,
         author_key: str | None = None
 ):
     
@@ -119,6 +123,7 @@ def search_authors(
         return author_service.search_authors(
             author_name=author_name,
             author_starts_with=author_starts_with,
+            author_ends_with=author_ends_with,
             author_key=author_key,
             conn=conn
         )
