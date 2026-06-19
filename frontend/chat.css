@@ -642,11 +642,16 @@ html, body {
 
 .msg-bubble.markdown ul,
 .msg-bubble.markdown ol {
-  padding-left: 28px;
+  padding-left: 1.2em;
   margin: 6px 0 8px;
   list-style-position: outside;
 }
-.msg-bubble.markdown li { font-size: 14px; line-height: 1.55; }
+.msg-bubble.markdown li {
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 .msg-bubble.markdown strong { font-weight: 600; color: var(--text); }
 .msg-bubble.markdown em     { font-style: italic; }
