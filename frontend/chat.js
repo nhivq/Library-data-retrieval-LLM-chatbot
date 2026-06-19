@@ -71,7 +71,10 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        console.log("stream finished");
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
 

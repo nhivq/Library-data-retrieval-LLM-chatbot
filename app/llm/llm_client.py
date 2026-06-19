@@ -145,6 +145,7 @@ async def ask_agent_stream(
                     # CASE 1: normal text response
                     # ----------------------------
                     if delta.content:
+                        print("SENDING COMPLETE EVENT")
                         assistant_text += delta.content
                         payload = json.dumps(
                             {
@@ -304,6 +305,13 @@ async def ask_agent_stream(
                 user_id,
                 conn
             )
+        
+        except Exception as e:
+            print("STREAM ERROR:")
+            print(type(e))
+            print(e)
+            raise
+        
         finally:
             conn.close()
             print("===== ask_agent_stream END =====\n")
