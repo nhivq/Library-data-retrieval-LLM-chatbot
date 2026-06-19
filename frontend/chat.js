@@ -294,18 +294,36 @@ function renderMarkdown(text) {
     return `<ul>${items}</ul>`;
   });
 
-  html = html.replace(/(^\d+\. .+\n?)+/gm, match => {
-    const items = match.trim().split('\n')
-      .map(line => `<li>${line.replace(/^\d+\. /, '')}</li>`).join('');
-    return `<ol>${items}</ol>`;
-  });
-
   html = html.replace(/^(---|\*\*\*)$/gm, '<hr>');
 
-  html = html.split(/\n{2,}/).map(block => {
-    if (/^<(h[1-3]|ul|ol|pre|hr)/.test(block.trim())) return block;
-    return `<p>${block.trim().replace(/\n/g, '<br>')}</p>`;
-  }).join('\n');
+  const blocks = html.split(/\n{2,}/);
+  const rendered = [];
+
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    const orderedMatch = lines.some(line => /^\d+\.\s+/.test(line.trim()));
+
+    if (orderedMatch) {
+      const items = lines
+        .map(line => line.trim())
+        .filter(line => /^\d+\.\s+/.test(line))
+        .map(line => `<li>${line.replace(/^\d+\.\s+/, '')}</li>`)
+        .join('');
+
+      if (items) {
+        rendered.push(`<ol>${items}</ol>`);
+        continue;
+      }
+    }
+
+    if (/^<(h[1-3]|ul|ol|pre|hr)/.test(block.trim())) {
+      rendered.push(block);
+    } else {
+      rendered.push(`<p>${block.trim().replace(/\n/g, '<br>')}</p>`);
+    }
+  }
+
+  html = rendered.join('\n');
 
   return html;
 }
