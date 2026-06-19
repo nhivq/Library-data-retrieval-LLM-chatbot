@@ -21,6 +21,7 @@ def process_tool_result(
                     {
                         "work_key": book.get("work_key"),
                         "title": book.get("title"),
+                        "publish_date": book.get("publish_date"),
                         "rating": book.get("rating"),
                         "authors": book.get("authors"),
                         "tags": book.get("tags")[:3] if book.get("tags") else None,

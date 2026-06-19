@@ -331,7 +331,6 @@ function renderMarkdown(text) {
     const line = rawLine.trimEnd();
     if (!line.trim()) {
       flushParagraph();
-      flushOrdered();
       flushUnordered();
       continue;
     }
@@ -353,6 +352,10 @@ function renderMarkdown(text) {
     }
 
     if (ordered.length) {
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        ordered[ordered.length - 1] += `<br>${line}`;
+        continue;
+      }
       ordered[ordered.length - 1] += `<br>${line}`;
       continue;
     }
