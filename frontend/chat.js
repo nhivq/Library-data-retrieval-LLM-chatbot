@@ -309,6 +309,10 @@ function renderMarkdown(text) {
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
   );
   html = html.replace(
+    /work_key:\s*\((https?:\/\/[^)\s]+)\)/gi,
+    'work_key: (<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>)'
+  );
+  html = html.replace(
     /(^|[^"'=])(https?:\/\/[^\s<)]+)/g,
     (_, prefix, url) => `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
   );
