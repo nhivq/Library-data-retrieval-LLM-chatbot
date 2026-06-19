@@ -104,6 +104,14 @@ async def ask_agent_stream(
             )
             start = time.perf_counter()
             messages = get_messages(session_id, user_id, conn)
+            if not any(m["role"] == "system" for m in messages):
+                messages.insert(
+                    0,
+                    {
+                        "role": "system",
+                        "content": formatted_prompt
+                    }
+                )
             print(
                 "stream get_messages:",
                 round((time.perf_counter() - start) * 1000),
