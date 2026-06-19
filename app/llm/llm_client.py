@@ -184,6 +184,13 @@ async def ask_agent_stream(
                 for idx, tc_data in sorted(tool_calls_accumulator.items()):
                     tool_name = tc_data["name"]
                     arguments = json.loads(tc_data["arguments"])
+                # Inject authenticated user_id only for bookmark operations
+                if tool_name in [
+                    "save_bookmarks",
+                    "get_bookmarks",
+                    "delete_bookmarks"
+                ]:
+                    arguments["user_id"] = user_id
                     try:
                         tool_start = time.perf_counter()
                         # Call the MCP tool via the active fastmcp client.
@@ -286,6 +293,7 @@ async def ask_agent_stream(
                 session_id,
                 "assistant",
                 assistant_text,
+                user_id,
                 conn
             )
         finally:

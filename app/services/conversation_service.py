@@ -245,6 +245,7 @@ def get_messages(
 
             WHERE c.session_id = %s
             AND c.user_id=%s
+            AND role!='system'
 
             ORDER BY m.id ASC
             """

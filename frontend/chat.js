@@ -369,6 +369,17 @@ function setInputDisabled(disabled) {
 }
 
 function loadConversation(messages) {
+
   chatArea.innerHTML = '';
-  messages.forEach(({ role, text, content }) => appendMessage(role, text ?? content ?? ''));
+
+  messages.forEach(({ role, text, content }) => {
+
+    if (role === 'system') return;
+
+    appendMessage(
+      role,
+      text ?? content ?? ''
+    );
+
+  });
 }

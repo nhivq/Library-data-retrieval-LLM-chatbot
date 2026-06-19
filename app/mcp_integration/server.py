@@ -153,7 +153,8 @@ def search_authors(
     """
 )
 def save_bookmarks(
-    bookmark: Bookmark
+    bookmark: Bookmark,
+    user_id: int
 ):
     
     db = get_db()
@@ -162,7 +163,7 @@ def save_bookmarks(
     try:
 
         return bookmark_service.save_bookmark(
-            user_id=bookmark.user_id,
+            user_id=user_id,
             work_key=bookmark.work_key,
             conn=conn
         )
@@ -173,7 +174,7 @@ def save_bookmarks(
 
 
 @mcp.tool(
-    description="Get all bookmarks information saved under a user ID"
+    description="Get all bookmarks saved by the current user"
 )
 def get_bookmarks(
     user_id: int
@@ -195,7 +196,7 @@ def get_bookmarks(
 
 
 @mcp.tool(
-    description="Delete specific bookmark of user"
+    description="Delete a bookmark from the current user's saved bookmarks using work_key"
 )
 def delete_bookmarks(
     work_key: str,
