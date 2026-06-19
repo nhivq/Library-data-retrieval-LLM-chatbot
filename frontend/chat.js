@@ -9,6 +9,26 @@ let currentSessionId = crypto.randomUUID();
 const chatArea  = document.getElementById('chatArea');
 const userInput = document.getElementById('userInput');
 const sendBtn   = document.getElementById('sendBtn');
+const quickActionsList = document.getElementById('quickActionsList');
+
+const QUICK_ACTIONS = [
+  'Find fantasy books',
+  'Recommend a book',
+  'Search authors',
+  'My bookmarks',
+  'Find highly rated books'
+];
+
+if (quickActionsList) {
+  QUICK_ACTIONS.forEach((prompt) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'quick-action-btn';
+    button.textContent = prompt;
+    button.addEventListener('click', () => handleSend(prompt));
+    quickActionsList.appendChild(button);
+  });
+}
 
 // ── Logout ────────────────────────────────────────────────────
 document.getElementById('logoutBtn').addEventListener('click', logout);
@@ -30,8 +50,8 @@ userInput.addEventListener('keydown', (e) => {
 sendBtn.addEventListener('click', handleSend);
 
 // ── Core send flow ────────────────────────────────────────────
-async function handleSend() {
-  const text = userInput.value.trim();
+async function handleSend(messageOverride = null) {
+  const text = (messageOverride ?? userInput.value).trim();
   if (!text) return;
 
   userInput.value = '';
