@@ -310,7 +310,12 @@ function renderMarkdown(text) {
   );
   html = html.replace(
     /work_key:\s*\((https?:\/\/[^)\s]+)\)/gi,
-    'work_key: (<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>)'
+    (_, url) => {
+      const normalized = url.includes('/works/')
+        ? url
+        : url.replace(/\/([A-Za-z0-9]+W)(?:\?.*)?$/, '/works/$1');
+      return `work_key: (<a href="${normalized}" target="_blank" rel="noopener noreferrer">${normalized}</a>)`;
+    }
   );
   html = html.replace(
     /(^|[^"'=])(https?:\/\/[^\s<)]+)/g,
