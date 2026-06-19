@@ -288,6 +288,10 @@ function renderMarkdown(text) {
     /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
   );
+  html = html.replace(
+    /(^|[^"'=])(https?:\/\/[^\s<)]+)/g,
+    (_, prefix, url) => `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
+  );
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
   html = html.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
