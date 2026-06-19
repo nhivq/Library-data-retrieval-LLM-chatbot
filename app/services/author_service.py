@@ -74,9 +74,9 @@ def search_authors(
 
         if author_ends_with:
             query += """
-                    AND authors.author_name ILIKE %s
+                    AND a.author_name ILIKE %s
                     """
-            params.append(f"{author_ends_with}")
+            params.append(f"%{author_ends_with}")
 
         if author_name:
             query += """

@@ -146,7 +146,6 @@ async def ask_agent_stream(
                     # CASE 1: normal text response
                     # ----------------------------
                     if delta.content:
-                        print("SENDING COMPLETE EVENT")
                         assistant_text += delta.content
                         payload = json.dumps(
                             {

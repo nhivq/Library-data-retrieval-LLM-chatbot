@@ -92,7 +92,7 @@ const Auth = {
 //   2. Add headers: 'Authorization': `Bearer ${sessionStorage.getItem('token')}`
 const ApiService = {
   async login(username, password) {
-    const res = await fetch(`${API_BASE}/login`, {
+    const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -104,7 +104,7 @@ const ApiService = {
   },
 
   async register(username, email, password) {
-    const res = await fetch(`${API_BASE}/register`, {
+    const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password }),
@@ -124,7 +124,7 @@ async function refreshAccessToken(){
   if(!refreshToken)
     return false;
 
-  const res = await fetch(`${API_BASE}/refresh`,
+  const res = await fetch(`${API_BASE}/auth/refresh`,
     {
       method:"POST",
 
