@@ -39,7 +39,7 @@ def get_author(
 
 def search_authors(
         author_name: str | None = None,
-        author_starts_with: str | None = None,,
+        author_starts_with: str | None = None,
         author_ends_with: str | None = None,
         author_key: str | None = None,
         conn=None
