@@ -405,6 +405,7 @@ html, body {
   overflow: visible;
 }
 
+<<<<<<< HEAD
 .book-card-list {
   display: grid;
   gap: 12px;
@@ -568,6 +569,8 @@ html, body {
   }
 }
 
+=======
+>>>>>>> parent of f36d86b (frontend similar books pattern added)
 /* ── Thinking state ───────────────────────────────────────── */
 .thinking-label {
   color: var(--text-muted);

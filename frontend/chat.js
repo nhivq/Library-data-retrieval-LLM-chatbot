@@ -16,7 +16,7 @@ const QUICK_ACTIONS = [
   'Save all books to bookmark',
   'Search authors',
   'My bookmarks',
-  'Find highly rated science books'
+  'Find highly rated books'
 ];
 
 if (quickActionsList) {
@@ -179,8 +179,12 @@ function replaceWithAnswer(row, answer, steps) {
   row.classList.remove('thinking');
   const bubble = row.querySelector('.msg-bubble');
 
+  // 1. Answer text (markdown)
+  const answerDiv = document.createElement('div');
+  answerDiv.className = 'markdown';
+  answerDiv.innerHTML = renderMarkdown(answer);
   bubble.innerHTML = '';
-  renderAssistantContent(bubble, answer);
+  bubble.appendChild(answerDiv);
 
   // 2. Agent activity panel (only if there are steps)
   if (steps.length > 0) {
@@ -406,6 +410,7 @@ function renderMarkdown(text) {
   return html;
 }
 
+<<<<<<< HEAD
 function renderAssistantContent(container, text) {
   const parsed = parseBookList(text);
 
@@ -683,6 +688,8 @@ async function saveBookmarkFromCard(book) {
   }
 }
 
+=======
+>>>>>>> parent of f36d86b (frontend similar books pattern added)
 // ── Message builders ──────────────────────────────────────────
 function appendMessage(role, text) {
   const row = document.createElement('div');
@@ -698,7 +705,8 @@ function appendMessage(role, text) {
   if (role === 'user') {
     bubble.textContent = text;
   } else {
-    renderAssistantContent(bubble, text);
+    bubble.classList.add('markdown');
+    bubble.innerHTML = renderMarkdown(text);
   }
 
   row.appendChild(label);
