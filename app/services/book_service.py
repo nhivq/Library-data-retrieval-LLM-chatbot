@@ -219,3 +219,98 @@ def get_specific_book(
 
     finally:
         cursor.close()
+
+
+def similar_books(
+        work_key: str,
+        conn=None,
+        limit: int = 10
+):
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        query = """
+                WITH target_book AS (
+                    SELECT b.work_key,
+                           b.title,
+                           b.tags,
+                           b.rating,
+                           COALESCE(
+                               ARRAY_AGG(a.author_name)
+                               FILTER (WHERE a.author_name IS NOT NULL),
+                               ARRAY[]::text[]
+                           ) AS authors
+                    FROM books b
+                             LEFT JOIN book_authors ba
+                                  ON b.work_key = ba.work_key
+                             LEFT JOIN authors a
+                                  ON ba.author_key = a.author_key
+                    WHERE b.work_key = %s
+                    GROUP BY b.work_key,
+                             b.title,
+                             b.tags,
+                             b.rating
+                ),
+                candidate_books AS (
+                    SELECT b.work_key,
+                           b.title,
+                           b.tags,
+                           b.publish_date,
+                           b.rating,
+                           COALESCE(
+                               ARRAY_AGG(a.author_name)
+                               FILTER (WHERE a.author_name IS NOT NULL),
+                               ARRAY[]::text[]
+                           ) AS authors
+                    FROM books b
+                             LEFT JOIN book_authors ba
+                                  ON b.work_key = ba.work_key
+                             LEFT JOIN authors a
+                                  ON ba.author_key = a.author_key
+                    WHERE b.work_key <> %s
+                    GROUP BY b.work_key,
+                             b.title,
+                             b.tags,
+                             b.publish_date,
+                             b.rating
+                )
+                SELECT c.work_key,
+                       c.title,
+                       c.tags,
+                       c.publish_date,
+                       c.rating,
+                       c.authors,
+                       (
+                           COALESCE(
+                               (
+                                   SELECT COUNT(*)
+                                   FROM unnest(COALESCE(c.tags, ARRAY[]::text[])) AS candidate_tag
+                                   WHERE candidate_tag = ANY(COALESCE(t.tags, ARRAY[]::text[]))
+                               ),
+                               0
+                           ) * 3
+                           + (1 - (ABS(COALESCE(c.rating, 0) - COALESCE(t.rating, 0)) / 5.0))
+                           + CASE
+                               WHEN EXISTS (
+                                   SELECT 1
+                                   FROM unnest(COALESCE(c.authors, ARRAY[]::text[])) AS candidate_author
+                                   WHERE candidate_author = ANY(COALESCE(t.authors, ARRAY[]::text[]))
+                               ) THEN 2
+                               ELSE 0
+                             END
+                       ) AS similarity_score
+                FROM candidate_books c
+                         CROSS JOIN target_book t
+                ORDER BY similarity_score DESC,
+                         c.rating DESC,
+                         c.title ASC
+                LIMIT %s
+                """
+
+        cursor.execute(query, (work_key, work_key, limit))
+
+        return cursor.fetchall()
+
+    finally:
+        cursor.close()
+        

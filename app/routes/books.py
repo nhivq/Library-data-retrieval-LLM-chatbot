@@ -5,10 +5,11 @@ from fastapi import (
     Depends
 )
 from app.database.connection import get_db
-from app.schemas.book_schemas import BookResponse
+from app.schemas.book_schemas import BookResponse, SimilarBookResponse
 from app.services import book_service
 
 router=APIRouter(
+    prefix="/books",
     tags=["Books"]
 )
 
@@ -17,7 +18,7 @@ router=APIRouter(
 # /books
 # /books?limit=20
 @router.get(
-    "/books",
+    "/",
     response_model=list[BookResponse]
 )
 def get_books(
@@ -46,7 +47,7 @@ def get_books(
 # Path allows:
 # /books/search?q=history
 @router.get(
-    "/books/search",
+    "/search",
     response_model=list[BookResponse] # dùng list vì /books returns multiple books
 )
 def search_books(
@@ -73,8 +74,6 @@ def search_books(
 
     except Exception as e:
 
-        print(e)
-
         raise HTTPException(  # Standardize API behaviour
             status_code=400, # Return proper HTTP status codes & meaningful error messages
             detail="Could not search books"
@@ -85,7 +84,7 @@ def search_books(
 # Path allows:
 # /works/OL12345W (double // because work_key contains /)
 @router.get(
-    "/books/{work_key:path}",
+    "/{work_key:path}",
     response_model=BookResponse # response_model validates API responses & ensures the returned data follows a structure
 )                               # If it is removed -> May return wrong fields/ unexpected data
 def get_book(
@@ -116,4 +115,35 @@ def get_book(
         raise HTTPException(
             status_code=400,
             detail="Could not retrieve book"
+        )
+
+
+# ---------- Find Similar Books ----------
+# Path allows:
+# /books/{work_key}/similar
+@router.get(
+    "/{work_key:path}/similar",
+    response_model=list[SimilarBookResponse]
+)
+def similar_books(
+    work_key: str,
+    conn=Depends(get_db)
+):
+    
+    try:
+    
+        return book_service.similar_books(
+            work_key,
+            conn
+        )
+    
+    except HTTPException:
+
+        raise
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Could not find similar books"
         )

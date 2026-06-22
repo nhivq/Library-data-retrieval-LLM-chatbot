@@ -12,7 +12,7 @@ mcp = FastMCP("Book Retrieval MCP")
 # ---------- Book Tools ----------
 
 @mcp.tool(
-    description="Search books by title, author, rating, and tag filters. Use this tool for any book lookup request and only return actual database results. When the user asks about author names or patterns, pass the author string to this tool. Do not invent books, authors, ratings, dates, or tags."
+    description="Search books by title, author, rating, and tag filters. Returns matching books from the database."
 )
 def search_books(
 q: str | None = None,
@@ -44,7 +44,7 @@ q: str | None = None,
 
 
 @mcp.tool(
-    description="Get a book by its work_key"
+    description="Get one book by its exact work_key."
 )
 def get_book(
     work_key: str
@@ -65,10 +65,36 @@ def get_book(
         db.close()
 
 
+@mcp.tool(
+        description= """
+Find books similar to a given book by work_key.
+
+Returns ranked books using tag overlap, rating closeness, and shared authors.
+"""
+)
+def similar_books(
+    work_key: str
+):
+    
+    db = get_db()
+    conn = next(db)
+
+    try:
+
+        return book_service.similar_books(
+            work_key=work_key,
+            conn=conn
+        )
+    
+    finally:
+
+        db.close()
+
+
 # ---------- Author Tools ----------
 
 @mcp.tool(
-    description="Get author information by author key"
+    description="Get one author by exact author key."
 )
 def get_author(
     author_key: str
@@ -91,16 +117,16 @@ def get_author(
 
 @mcp.tool(
     description="""
-    Search authors.
+    Search authors by name pattern or author key.
 
     author_name:
-    Search for authors whose names contain text.
+    Match authors whose names contain text.
 
     author_starts_with:
-    Search for authors whose names begin with specific letters.
+    Match authors whose names begin with specific letters.
 
     author_ends_with:
-    Search for authors whose names end with specific letters.
+    Match authors whose names end with specific letters.
 
     Returns:
     - author name
@@ -174,7 +200,7 @@ def save_bookmarks(
 
 
 @mcp.tool(
-    description="Get all bookmarks saved by the current user"
+    description="Get all bookmarks saved by the current user."
 )
 def get_bookmarks(
     user_id: int
@@ -196,7 +222,7 @@ def get_bookmarks(
 
 
 @mcp.tool(
-    description="Delete a bookmark from the current user's saved bookmarks using work_key"
+    description="Delete one bookmark from the current user's saved books by work_key."
 )
 def delete_bookmarks(
     work_key: str,
@@ -222,7 +248,7 @@ def delete_bookmarks(
 # ---------- Authorization Tools ----------
 
 @mcp.tool(
-    description="Register account using email, username and password"
+    description="Register a user account with username, email, and password."
 )
 def register(
     user: RegisterRequest
@@ -246,7 +272,7 @@ def register(
 
 
 @mcp.tool(
-    description="Login account using username and password"
+    description="Login a user with username and password."
 )
 def login(
     user: LoginRequest

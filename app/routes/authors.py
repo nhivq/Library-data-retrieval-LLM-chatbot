@@ -9,12 +9,13 @@ from app.services import author_service
 
 
 router=APIRouter(
+    prefix="/authors",
     tags=["Authors"]
 )
 
 
 # ---------- Get Authors ----------
-@router.get("/authors", response_model=list[AuthorResponse])
+@router.get("/", response_model=list[AuthorResponse])
 def get_authors(
         page: int = 1,
         limit: int = 10,
@@ -37,7 +38,7 @@ def get_authors(
 
 
 # ---------- Search Authors ----------
-@router.get("/authors/search")
+@router.get("/search")
 def search_authors(
         author_name: str | None = None,
         author_key: str | None = None,
@@ -60,7 +61,7 @@ def search_authors(
 
 
 # ---------- Get Author ----------
-@router.get("/authors/{author_key:path}")
+@router.get("/{author_key:path}")
 def get_author(
         author_key: str,
         conn=Depends(get_db)

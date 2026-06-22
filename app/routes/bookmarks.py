@@ -9,11 +9,12 @@ from app.services import bookmark_service
 from app.core.dependencies import get_current_user
 
 router=APIRouter(
+    prefix="/bookmarks",
     tags=["Bookmarks"]
 )
 
 # ---------- Save Bookmark ----------
-@router.post("/bookmarks")
+@router.post("/")
 def save_bookmark(
         bookmark: Bookmark,
         user=Depends(get_current_user),
@@ -38,7 +39,7 @@ def save_bookmark(
 # ---------- Get Bookmarks ----------
 # Path allows:
 # /bookmarks?user_id=1
-@router.get("/bookmarks")
+@router.get("/")
 def get_bookmark(
         user=Depends(get_current_user),
         conn=Depends(get_db)
@@ -60,7 +61,7 @@ def get_bookmark(
 
 
 # ---------- Delete Bookmarks ----------
-@router.delete("/bookmarks/{work_key:path}")
+@router.delete("/{work_key:path}")
 def delete_bookmark(
         work_key: str,
         user=Depends(get_current_user),

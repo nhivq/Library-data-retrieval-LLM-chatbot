@@ -11,3 +11,13 @@ class BookResponse(BaseModel): # Inherit baseModel from pydantic for automatic v
     publish_date: date | None = None
     rating: float | None = None
     authors: list[str] = []
+
+
+class SimilarBookResponse(BaseModel):
+    work_key: str
+    title: str
+    tags: list[str] | None = None
+    publish_date: date | None = None
+    rating: float | None = None
+    authors: list[str] = []
+    similarity_score: float
