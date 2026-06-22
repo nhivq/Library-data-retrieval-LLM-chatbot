@@ -452,8 +452,8 @@ function parseBookList(text) {
     const rawLine = lines[index];
     const line = rawLine.trim();
 
-    const numberedTitle = line.match(/^(\d+)\.\s+(.+)$/);
-    if (numberedTitle) {
+    const title = extractBookTitle(line);
+    if (title) {
       if (currentBook) {
         books.push(normalizeBook(currentBook));
       }
@@ -463,12 +463,13 @@ function parseBookList(text) {
       }
 
       currentBook = {
-        title: numberedTitle[2].trim(),
+        title,
         authors: '',
         rating: '',
         published: '',
         tags: '',
-        work_key: ''
+        work_key: '',
+        link: ''
       };
       lastBookIndex = index;
       continue;
@@ -495,6 +496,17 @@ function parseBookList(text) {
         currentBook.work_key = extractWorkKey(value);
       }
 
+      lastBookIndex = index;
+      continue;
+    }
+
+    const bookLink = line.match(/^[-*]?\s*\[?View Book\]?\s*:?[\s-]*\(?((?:https?:\/\/)[^)\s]+)\)?$/i)
+      || line.match(/^[-*]?\s*\[View Book\]\((https?:\/\/[^)]+)\)$/i);
+    if (bookLink) {
+      currentBook.link = bookLink[1].trim();
+      if (!currentBook.work_key) {
+        currentBook.work_key = extractWorkKey(bookLink[1]);
+      }
       lastBookIndex = index;
       continue;
     }
@@ -534,8 +546,34 @@ function normalizeBook(book) {
     rating: parseRating(book.rating),
     published: book.published || 'Unknown date',
     tags: parseTags(book.tags),
-    work_key: book.work_key || ''
+    work_key: book.work_key || '',
+    link: book.link || ''
   };
+}
+
+function extractBookTitle(line) {
+  const cleaned = line
+    .replace(/^\d+\.\s+/, '')
+    .replace(/^[-*]\s+/, '')
+    .replace(/^📖\s*/, '')
+    .trim();
+
+  const markdownTitle = cleaned.match(/^\*\*(.+?)\*\*$/);
+  if (markdownTitle) {
+    return markdownTitle[1].trim();
+  }
+
+  const plainTitle = cleaned.match(/^(.+)$/);
+  if (!plainTitle) {
+    return null;
+  }
+
+  const value = plainTitle[1].trim();
+  if (!value || /^[A-Za-z_ ]+\s*:/.test(value)) {
+    return null;
+  }
+
+  return /^\d+\./.test(line) || /^📖/.test(line) ? value : null;
 }
 
 function looksLikeAnotherSection(line) {
@@ -590,6 +628,16 @@ function buildBookCard(book) {
   if (!book.work_key) {
     card.querySelector('[data-action="bookmark"]').disabled = true;
     card.querySelector('[data-action="bookmark"]').title = 'Bookmark requires a work_key in the assistant response';
+  }
+
+  if (book.link) {
+    const meta = document.createElement('a');
+    meta.className = 'book-card-link';
+    meta.href = book.link;
+    meta.target = '_blank';
+    meta.rel = 'noopener noreferrer';
+    meta.textContent = 'Open book';
+    card.insertBefore(meta, card.querySelector('.book-card-actions'));
   }
 
   card.querySelector('[data-action="bookmark"]').addEventListener('click', () => saveBookmarkFromCard(book));
