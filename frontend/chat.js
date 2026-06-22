@@ -16,7 +16,7 @@ const QUICK_ACTIONS = [
   'Save all books to bookmark',
   'Search authors',
   'My bookmarks',
-  'Find highly rated books'
+  'Find highly rated science books'
 ];
 
 if (quickActionsList) {
@@ -179,12 +179,8 @@ function replaceWithAnswer(row, answer, steps) {
   row.classList.remove('thinking');
   const bubble = row.querySelector('.msg-bubble');
 
-  // 1. Answer text (markdown)
-  const answerDiv = document.createElement('div');
-  answerDiv.className = 'markdown';
-  answerDiv.innerHTML = renderMarkdown(answer);
   bubble.innerHTML = '';
-  bubble.appendChild(answerDiv);
+  renderAssistantContent(bubble, answer);
 
   // 2. Agent activity panel (only if there are steps)
   if (steps.length > 0) {
@@ -410,6 +406,235 @@ function renderMarkdown(text) {
   return html;
 }
 
+function renderAssistantContent(container, text) {
+  const parsed = parseBookList(text);
+
+  if (!parsed) {
+    const answerDiv = document.createElement('div');
+    answerDiv.className = 'markdown';
+    answerDiv.innerHTML = renderMarkdown(text);
+    container.appendChild(answerDiv);
+    return;
+  }
+
+  if (parsed.intro) {
+    const intro = document.createElement('div');
+    intro.className = 'markdown';
+    intro.innerHTML = renderMarkdown(parsed.intro);
+    container.appendChild(intro);
+  }
+
+  const cards = document.createElement('div');
+  cards.className = 'book-card-list';
+
+  parsed.books.forEach((book) => {
+    cards.appendChild(buildBookCard(book));
+  });
+
+  container.appendChild(cards);
+
+  if (parsed.outro) {
+    const outro = document.createElement('div');
+    outro.className = 'markdown';
+    outro.innerHTML = renderMarkdown(parsed.outro);
+    container.appendChild(outro);
+  }
+}
+
+function parseBookList(text) {
+  const lines = text.split('\n');
+  const books = [];
+  let currentBook = null;
+  let firstBookIndex = -1;
+  let lastBookIndex = -1;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    const line = rawLine.trim();
+
+    const numberedTitle = line.match(/^(\d+)\.\s+(.+)$/);
+    if (numberedTitle) {
+      if (currentBook) {
+        books.push(normalizeBook(currentBook));
+      }
+
+      if (firstBookIndex === -1) {
+        firstBookIndex = index;
+      }
+
+      currentBook = {
+        title: numberedTitle[2].trim(),
+        authors: '',
+        rating: '',
+        published: '',
+        tags: '',
+        work_key: ''
+      };
+      lastBookIndex = index;
+      continue;
+    }
+
+    if (!currentBook) {
+      continue;
+    }
+
+    const fieldMatch = line.match(/^[-*]?\s*(Author|Authors|Rating|Published|Publish Date|Tags|work_key)\s*:\s*(.*)$/i);
+    if (fieldMatch) {
+      const key = fieldMatch[1].toLowerCase();
+      const value = fieldMatch[2].trim();
+
+      if (key === 'author' || key === 'authors') {
+        currentBook.authors = value;
+      } else if (key === 'rating') {
+        currentBook.rating = value;
+      } else if (key === 'published' || key === 'publish date') {
+        currentBook.published = value;
+      } else if (key === 'tags') {
+        currentBook.tags = value;
+      } else if (key === 'work_key') {
+        currentBook.work_key = extractWorkKey(value);
+      }
+
+      lastBookIndex = index;
+      continue;
+    }
+
+    if (!line) {
+      continue;
+    }
+
+    if (currentBook && !looksLikeAnotherSection(line)) {
+      currentBook.title = `${currentBook.title} ${line}`.trim();
+      lastBookIndex = index;
+      continue;
+    }
+
+    break;
+  }
+
+  if (currentBook) {
+    books.push(normalizeBook(currentBook));
+  }
+
+  if (!books.length) {
+    return null;
+  }
+
+  return {
+    intro: lines.slice(0, firstBookIndex).join('\n').trim(),
+    books,
+    outro: lines.slice(lastBookIndex + 1).join('\n').trim()
+  };
+}
+
+function normalizeBook(book) {
+  return {
+    title: book.title || 'Untitled',
+    authors: book.authors || 'Unknown author',
+    rating: parseRating(book.rating),
+    published: book.published || 'Unknown date',
+    tags: parseTags(book.tags),
+    work_key: book.work_key || ''
+  };
+}
+
+function looksLikeAnotherSection(line) {
+  return /^#{1,3}\s+/.test(line)
+    || /^[-*]\s+/.test(line)
+    || /^\d+\.\s+/.test(line)
+    || /^[A-Za-z_ ]+\s*:\s*/.test(line);
+}
+
+function extractWorkKey(value) {
+  const match = value.match(/\/works\/[A-Za-z0-9]+W/);
+  return match ? match[0] : value.replace(/[()]/g, '').trim();
+}
+
+function parseRating(value) {
+  const match = value.match(/\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
+function parseTags(value) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+function buildBookCard(book) {
+  const card = document.createElement('section');
+  card.className = 'book-card';
+
+  const tagsHtml = book.tags.length
+    ? book.tags.map((tag) => `<span class="book-tag">${escapeHtml(tag)}</span>`).join('')
+    : '<span class="book-tag muted">No tags</span>';
+
+  card.innerHTML = `
+    <div class="book-card-title-row">
+      <h3 class="book-card-title">📖 ${escapeHtml(book.title)}</h3>
+    </div>
+    <div class="book-card-meta">
+      <div class="book-card-line">✍️ <span>${escapeHtml(book.authors)}</span></div>
+      <div class="book-card-line">${renderRatingVisual(book.rating)}</div>
+      <div class="book-card-line">📅 <span>${escapeHtml(book.published)}</span></div>
+    </div>
+    <div class="book-card-tags">${tagsHtml}</div>
+    <div class="book-card-actions">
+      <button type="button" class="book-action-btn" data-action="bookmark">🔖 Bookmark</button>
+      <button type="button" class="book-action-btn accent" data-action="similar">✨ Find Similar Books</button>
+    </div>
+  `;
+
+  if (!book.work_key) {
+    card.querySelector('[data-action="bookmark"]').disabled = true;
+    card.querySelector('[data-action="bookmark"]').title = 'Bookmark requires a work_key in the assistant response';
+  }
+
+  card.querySelector('[data-action="bookmark"]').addEventListener('click', () => saveBookmarkFromCard(book));
+  card.querySelector('[data-action="similar"]').addEventListener('click', () => handleSend(`Find similar books to:\n${book.title}`));
+
+  return card;
+}
+
+function renderRatingVisual(rating) {
+  if (rating === null) {
+    return '⭐ <span>Unrated</span>';
+  }
+
+  const stars = Math.max(1, Math.min(5, Math.round(rating)));
+  const filled = '★'.repeat(stars);
+  const empty = '☆'.repeat(5 - stars);
+  return `⭐ <span class="book-rating-stars">${filled}${empty}</span> <span class="book-rating-number">${escapeHtml(rating.toFixed(1))}</span>`;
+}
+
+async function saveBookmarkFromCard(book) {
+  if (!book.work_key) {
+    return;
+  }
+
+  try {
+    const response = await authFetch(`${API_BASE}/bookmarks/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ work_key: book.work_key })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    if (typeof fetchBookmarks === 'function') {
+      fetchBookmarks();
+    }
+  } catch (error) {
+    console.error('Bookmark save error:', error);
+  }
+}
+
 // ── Message builders ──────────────────────────────────────────
 function appendMessage(role, text) {
   const row = document.createElement('div');
@@ -425,8 +650,7 @@ function appendMessage(role, text) {
   if (role === 'user') {
     bubble.textContent = text;
   } else {
-    bubble.classList.add('markdown');
-    bubble.innerHTML = renderMarkdown(text);
+    renderAssistantContent(bubble, text);
   }
 
   row.appendChild(label);
