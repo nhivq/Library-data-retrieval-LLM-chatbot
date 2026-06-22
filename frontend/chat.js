@@ -312,9 +312,10 @@ function renderMarkdown(text) {
   html = html.replace(
     /work_key:\s*\((https?:\/\/[^)\s]+)\)/gi,
     (_, url) => {
-      const normalized = url.includes('/work_key/')
-        ? url
-        : url.replace(/\/([A-Za-z0-9]+W)(?:\?.*)?$/, '/work_key/$1');
+      const workKeyMatch = url.match(/\/works\/[A-Za-z0-9]+W|\b[A-Za-z0-9]+W\b/);
+      const normalized = workKeyMatch
+        ? `https://openlibrary.org${workKeyMatch[0].startsWith('/works/') ? workKeyMatch[0] : `/works/${workKeyMatch[0]}`}`
+        : url;
       return `work_key: (<a href="${normalized}" target="_blank" rel="noopener noreferrer">${normalized}</a>)`;
     }
   );
