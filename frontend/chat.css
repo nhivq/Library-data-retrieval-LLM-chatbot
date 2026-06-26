@@ -354,6 +354,54 @@ html, body {
   line-height: 1.7;
 }
 
+.welcome-subtitle {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+
+/* ── Centered Empty Chat State ────────────────────────────── */
+.chat-column.welcome-mode {
+  justify-content: center;
+}
+
+.chat-column.welcome-mode .chat-area {
+  flex: 0 0 auto;
+  overflow: visible;
+  padding: 0 24px 14px;
+}
+
+.chat-column.welcome-mode .welcome {
+  margin: 0;
+  padding: 0 20px;
+}
+
+.chat-column.welcome-mode .welcome-hint {
+  color: var(--text);
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.chat-column.welcome-mode .quick-actions {
+  border-top: none;
+  background: transparent;
+  padding: 8px 24px 12px;
+}
+
+.chat-column.welcome-mode .quick-actions-label {
+  text-align: center;
+}
+
+.chat-column.welcome-mode .quick-actions-list {
+  justify-content: center;
+}
+
+.chat-column.welcome-mode .input-bar {
+  flex-shrink: 0;
+}
+
 /* ── Message Rows ─────────────────────────────────────────── */
 .msg-row {
   display: flex;

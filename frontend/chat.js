@@ -10,6 +10,7 @@ const chatArea  = document.getElementById('chatArea');
 const userInput = document.getElementById('userInput');
 const sendBtn   = document.getElementById('sendBtn');
 const quickActionsList = document.getElementById('quickActionsList');
+const chatColumn = document.querySelector('.chat-column');
 
 const QUICK_ACTIONS = [
   'Find fantasy books',
@@ -30,6 +31,8 @@ if (quickActionsList) {
     quickActionsList.appendChild(button);
   });
 }
+
+setWelcomeMode(true);
 
 // ── Logout ────────────────────────────────────────────────────
 document.getElementById('logoutBtn').addEventListener('click', logout);
@@ -61,6 +64,8 @@ async function handleSend(messageOverride = null) {
 
   const welcome = chatArea.querySelector('.welcome');
   if (welcome) welcome.remove();
+
+  setWelcomeMode(false);
 
   appendMessage('user', text);
   const thinkingRow = appendThinking();
@@ -482,6 +487,13 @@ function loadConversation(messages) {
 
   chatArea.innerHTML = '';
 
+  if(!messages.length){
+    showWelcome();
+    return;
+  }
+
+  setWelcomeMode(false);
+
   messages.forEach(({ role, text, content }) => {
 
     if (role === 'system') return;
@@ -492,4 +504,26 @@ function loadConversation(messages) {
     );
 
   });
+}
+
+function showWelcome() {
+
+  // Empty chats use a centered welcome screen instead of the normal message list.
+  chatArea.innerHTML =
+    '<div class="welcome">' +
+      '<p class="welcome-hint">How can I help you explore OpenLibrary?</p>' +
+      '<p class="welcome-subtitle">Search by author, genre, rating, bookmarks, or similar books.</p>' +
+    '</div>';
+
+  setWelcomeMode(true);
+}
+
+function setWelcomeMode(enabled) {
+
+  // The CSS uses this class to move the input bar to the middle
+  // only when there are no messages in the current conversation.
+  chatColumn.classList.toggle(
+    'welcome-mode',
+    enabled
+  );
 }

@@ -154,11 +154,26 @@ def get_all_conversations(
 
     try:
 
+        # Get each conversation with its first user message,
+        # so the frontend can show a readable chat title.
         query = """
-            SELECT *
-            FROM conversations
-            WHERE user_id = %s
-            ORDER BY id;
+            SELECT c.*,
+                   first_user_message.content AS first_message
+
+            FROM conversations c
+
+                     LEFT JOIN LATERAL (
+                         SELECT m.content
+                         FROM messages m
+                         WHERE m.conversation_id = c.id
+                           AND m.role = 'user'
+                         ORDER BY m.id ASC
+                         LIMIT 1
+                     ) AS first_user_message
+                       ON TRUE
+
+            WHERE c.user_id = %s
+            ORDER BY c.id;
             """
 
         cursor.execute(query, (user_id,))

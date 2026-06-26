@@ -32,6 +32,21 @@ function formatSessionLabel(index) {
   return `Conversation ${index + 1}`;
 }
 
+function formatConversationLabel(conv, index) {
+
+  // Use the first user message as the conversation title.
+  // If the chat has no user message yet, keep the old generic label.
+  const firstMessage = (conv.first_message || '').trim();
+
+  if(!firstMessage){
+    return formatSessionLabel(index);
+  }
+
+  return firstMessage.length > 42
+    ? `${firstMessage.slice(0, 42)}…`
+    : firstMessage;
+}
+
 function shortSessionId(sessionId) {
   return sessionId.length > 12 ? `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}` : sessionId;
 }
@@ -81,7 +96,7 @@ function renderBackendConversations(convs){
   item.className="conv-item";
 
   item.innerHTML=`
-  <span class="conv-item-label">${escapeHtml(formatSessionLabel(index))}</span>
+  <span class="conv-item-label">${escapeHtml(formatConversationLabel(conv, index))}</span>
   <span class="conv-item-time">${escapeHtml(shortSessionId(conv.session_id))}</span>
   `;
   item.onclick=()=>{
@@ -121,9 +136,7 @@ async function loadConversationFromBackend(sessionId){
 document.getElementById('newChatBtn').addEventListener('click', () => {
   ConvHistory.newConversation();
 
-  // Clear the chat area and show welcome hint
-  const chatArea = document.getElementById('chatArea');
-  chatArea.innerHTML = '<div class="welcome"><p class="welcome-hint">Ask me anything about books —<br>by genre, rating, author, or theme.</p></div>';
+  showWelcome();
 });
 
 // ── Bookmarks ─────────────────────────────────────────────────
