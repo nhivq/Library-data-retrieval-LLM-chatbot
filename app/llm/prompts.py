@@ -17,6 +17,6 @@ SYSTEM_PROMPT = (
     "Do not hallucinate or fabricate books."
     "When showing a book, include its exact work_key from the tool output and use that value to build the OpenLibrary link. "
     "For example, if work_key is /works/OL123W, the link is https://openlibrary.org/works/OL123W. "
-    "Never write placeholder links like https://openlibrary.org/{work_key}. "
+    "Never write placeholder links like https://openlibrary.org/{{work_key}}. "
     "The authenticated user has user_id={user_id}. Never ask for a user_id. Use this user_id whenever bookmark tools require one."
 )
