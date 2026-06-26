@@ -89,6 +89,7 @@ def search_books(
 )
 def recommend_books(
         prompt: str,
+        concept_groups: list[str] | None = Query(default=None),
         limit: int = 10,
         conn=Depends(get_db)
 ):
@@ -96,6 +97,7 @@ def recommend_books(
 
         return book_service.recommend_books(
             prompt=prompt,
+            concept_groups=concept_groups,
             limit=limit,
             conn=conn
         )

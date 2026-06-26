@@ -55,11 +55,15 @@ with concrete related terms. Example:
 User: "Japanese history with a dramatic voice"
 Tool prompt: "Japanese Japan history historical culture war drama dramatic emotional literary narrative"
 
+Also pass concept_groups as separate intent groups. Example:
+["Japanese Japan", "history historical culture", "drama dramatic emotional literary narrative"]
+
 Returns ranked recommendations from the database.
 """
 )
 def recommend_books(
     prompt: str,
+    concept_groups: list[str] | None = None,
     limit: int = 10
 ):
 
@@ -70,6 +74,7 @@ def recommend_books(
 
         return book_service.recommend_books(
             prompt=prompt,
+            concept_groups=concept_groups,
             limit=limit,
             conn=conn
         )

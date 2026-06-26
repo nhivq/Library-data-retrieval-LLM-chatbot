@@ -30,4 +30,6 @@ class RecommendationBookResponse(BaseModel):
     publish_date: date | None = None
     rating: float | None = None
     authors: list[str] = []
+    matched_concept_count: int
+    concept_count: int
     recommendation_score: float

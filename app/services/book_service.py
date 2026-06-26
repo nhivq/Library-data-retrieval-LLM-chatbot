@@ -1,6 +1,6 @@
 import re
 
-from psycopg2.extras import RealDictCursor # By default, psycopg2 returns tuples
+from psycopg2.extras import Json, RealDictCursor # By default, psycopg2 returns tuples
 
 
 RECOMMENDATION_STOP_WORDS = {
@@ -47,6 +47,30 @@ def extract_recommendation_terms(
     return list(
         dict.fromkeys(terms)
     )
+
+
+def build_recommendation_groups(
+        prompt: str,
+        concept_groups: list[str] | None = None
+):
+    groups = concept_groups or [prompt]
+    prepared_groups = []
+
+    for index, group in enumerate(groups, start=1):
+
+        terms = extract_recommendation_terms(group)
+
+        if not terms:
+            continue
+
+        prepared_groups.append(
+            {
+                "group_id": index,
+                "terms": terms
+            }
+        )
+
+    return prepared_groups
 
 # display first n books
 def get_books(
@@ -227,6 +251,7 @@ def search_books(
 
 def recommend_books(
         prompt: str,
+        concept_groups: list[str] | None = None,
         limit: int = 10,
         conn=None
 ):
@@ -234,7 +259,12 @@ def recommend_books(
 
     try:
 
-        terms = extract_recommendation_terms(prompt)
+        prepared_groups = build_recommendation_groups(
+            prompt,
+            concept_groups
+        )
+
+        concept_count = len(prepared_groups)
 
         if limit < 1:
             limit = 10
@@ -243,8 +273,12 @@ def recommend_books(
             limit = 20
 
         query = """
-                WITH recommendation_terms AS (
-                    SELECT unnest(%s::text[]) AS term
+                WITH recommendation_groups AS (
+                    SELECT (group_data ->> 'group_id')::int AS group_id,
+                           ARRAY(
+                               SELECT jsonb_array_elements_text(group_data -> 'terms')
+                           ) AS terms
+                    FROM jsonb_array_elements(%s::jsonb) AS groups(group_data)
                 ),
                 candidate_books AS (
                     SELECT b.work_key,
@@ -271,47 +305,87 @@ def recommend_books(
                              b.tags,
                              b.publish_date,
                              b.rating
+                ),
+                scored_books AS (
+                    SELECT c.work_key,
+                           c.title,
+                           c.tags,
+                           c.publish_date,
+                           c.rating,
+                           c.authors,
+                           (
+                               SELECT COUNT(*)
+                               FROM recommendation_groups rg
+                               WHERE EXISTS (
+                                   SELECT 1
+                                   FROM unnest(rg.terms) AS term
+                                   WHERE c.title ILIKE '%%' || term || '%%'
+                                      OR EXISTS (
+                                          SELECT 1
+                                          FROM unnest(COALESCE(c.tags, ARRAY[]::text[])) AS tag
+                                          WHERE tag ILIKE '%%' || term || '%%'
+                                      )
+                                      OR EXISTS (
+                                          SELECT 1
+                                          FROM unnest(COALESCE(c.authors, ARRAY[]::text[])) AS author
+                                          WHERE author ILIKE '%%' || term || '%%'
+                                      )
+                               )
+                           ) AS matched_concept_count,
+                           (
+                               SELECT COALESCE(SUM(
+                                   (
+                                       SELECT COUNT(*)
+                                       FROM unnest(rg.terms) AS term
+                                       WHERE c.title ILIKE '%%' || term || '%%'
+                                   ) * 4
+                                   +
+                                   (
+                                       SELECT COUNT(*)
+                                       FROM unnest(rg.terms) AS term
+                                       WHERE EXISTS (
+                                           SELECT 1
+                                           FROM unnest(COALESCE(c.tags, ARRAY[]::text[])) AS tag
+                                           WHERE tag ILIKE '%%' || term || '%%'
+                                       )
+                                   ) * 3
+                                   +
+                                   (
+                                       SELECT COUNT(*)
+                                       FROM unnest(rg.terms) AS term
+                                       WHERE EXISTS (
+                                           SELECT 1
+                                           FROM unnest(COALESCE(c.authors, ARRAY[]::text[])) AS author
+                                           WHERE author ILIKE '%%' || term || '%%'
+                                       )
+                                   ) * 2
+                               ), 0)
+                               FROM recommendation_groups rg
+                           ) AS term_score
+                    FROM candidate_books c
                 )
-                SELECT c.work_key,
-                       c.title,
-                       c.tags,
-                       c.publish_date,
-                       c.rating,
-                       c.authors,
+                SELECT s.work_key,
+                       s.title,
+                       s.tags,
+                       s.publish_date,
+                       s.rating,
+                       s.authors,
+                       s.matched_concept_count,
+                       %s AS concept_count,
                        (
-                           (
-                               SELECT COUNT(*)
-                               FROM recommendation_terms rt
-                               WHERE c.title ILIKE '%%' || rt.term || '%%'
-                           ) * 4
-                           +
-                           (
-                               SELECT COUNT(*)
-                               FROM recommendation_terms rt
-                               WHERE EXISTS (
-                                   SELECT 1
-                                   FROM unnest(COALESCE(c.tags, ARRAY[]::text[])) AS tag
-                                   WHERE tag ILIKE '%%' || rt.term || '%%'
-                               )
-                           ) * 3
-                           +
-                           (
-                               SELECT COUNT(*)
-                               FROM recommendation_terms rt
-                               WHERE EXISTS (
-                                   SELECT 1
-                                   FROM unnest(COALESCE(c.authors, ARRAY[]::text[])) AS author
-                                   WHERE author ILIKE '%%' || rt.term || '%%'
-                               )
-                           ) * 2
-                           + COALESCE(c.rating, 0) / 5.0
+                           s.matched_concept_count * 10
+                           + s.term_score
+                           + COALESCE(s.rating, 0) / 5.0
                        ) AS recommendation_score
 
-                FROM candidate_books c
+                FROM scored_books s
 
-                ORDER BY recommendation_score DESC,
-                         c.rating DESC NULLS LAST,
-                         c.title ASC
+                WHERE s.matched_concept_count > 0
+
+                ORDER BY s.matched_concept_count DESC,
+                         recommendation_score DESC,
+                         s.rating DESC NULLS LAST,
+                         s.title ASC
 
                 LIMIT %s
                 """
@@ -319,7 +393,8 @@ def recommend_books(
         cursor.execute(
             query,
             (
-                terms,
+                Json(prepared_groups),
+                concept_count,
                 limit
             )
         )

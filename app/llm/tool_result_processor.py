@@ -24,6 +24,8 @@ def process_tool_result(
                         "publish_date": book.get("publish_date"),
                         "rating": book.get("rating"),
                         "recommendation_score": book.get("recommendation_score"),
+                        "matched_concept_count": book.get("matched_concept_count"),
+                        "concept_count": book.get("concept_count"),
                         "similarity_score": book.get("similarity_score"),
                         "authors": book.get("authors"),
                         "tags": book.get("tags")[:3] if book.get("tags") else None,
