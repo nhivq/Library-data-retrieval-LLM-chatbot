@@ -51,7 +51,7 @@ userInput.addEventListener('keydown', (e) => {
   }
 });
 
-sendBtn.addEventListener('click', handleSend);
+sendBtn.addEventListener('click', () => handleSend());
 
 // ── Core send flow ────────────────────────────────────────────
 async function handleSend(messageOverride = null) {
