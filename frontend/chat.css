@@ -400,6 +400,21 @@ html, body {
 
 .chat-column.welcome-mode .input-bar {
   flex-shrink: 0;
+  width: calc(100% - 80px);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.chat-column.welcome-mode .input-field {
+  border-radius: 14px;
+}
+
+.chat-column.welcome-mode .send-btn {
+  border-radius: 14px;
 }
 
 /* ── Message Rows ─────────────────────────────────────────── */
