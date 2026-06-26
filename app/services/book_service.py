@@ -1,4 +1,52 @@
+import re
+
 from psycopg2.extras import RealDictCursor # By default, psycopg2 returns tuples
+
+
+RECOMMENDATION_STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "also",
+    "book",
+    "books",
+    "for",
+    "give",
+    "having",
+    "i",
+    "is",
+    "me",
+    "of",
+    "that",
+    "the",
+    "to",
+    "want",
+    "with",
+}
+
+
+def extract_recommendation_terms(
+        prompt: str
+):
+    words = re.findall(
+        r"[a-zA-Z]+",
+        prompt.lower()
+    )
+
+    terms = []
+
+    for word in words:
+
+        if word in RECOMMENDATION_STOP_WORDS:
+            continue
+
+        terms.append(word)
+
+    # Keep term order stable while removing duplicates.
+    # Semantic expansion should happen in the LLM/tool call, not in a fixed backend map.
+    return list(
+        dict.fromkeys(terms)
+    )
 
 # display first n books
 def get_books(
@@ -171,6 +219,112 @@ def search_books(
 
         return books
 
+
+    finally:
+
+        cursor.close()
+
+
+def recommend_books(
+        prompt: str,
+        limit: int = 10,
+        conn=None
+):
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+
+        terms = extract_recommendation_terms(prompt)
+
+        if limit < 1:
+            limit = 10
+
+        if limit > 20:
+            limit = 20
+
+        query = """
+                WITH recommendation_terms AS (
+                    SELECT unnest(%s::text[]) AS term
+                ),
+                candidate_books AS (
+                    SELECT b.work_key,
+                           b.title,
+                           b.tags,
+                           b.publish_date,
+                           b.rating,
+                           COALESCE(
+                               ARRAY_AGG(a.author_name)
+                               FILTER (WHERE a.author_name IS NOT NULL),
+                               ARRAY[]::text[]
+                           ) AS authors
+
+                    FROM books b
+
+                             LEFT JOIN book_authors ba
+                                   ON b.work_key = ba.work_key
+
+                             LEFT JOIN authors a
+                                   ON ba.author_key = a.author_key
+
+                    GROUP BY b.work_key,
+                             b.title,
+                             b.tags,
+                             b.publish_date,
+                             b.rating
+                )
+                SELECT c.work_key,
+                       c.title,
+                       c.tags,
+                       c.publish_date,
+                       c.rating,
+                       c.authors,
+                       (
+                           (
+                               SELECT COUNT(*)
+                               FROM recommendation_terms rt
+                               WHERE c.title ILIKE '%%' || rt.term || '%%'
+                           ) * 4
+                           +
+                           (
+                               SELECT COUNT(*)
+                               FROM recommendation_terms rt
+                               WHERE EXISTS (
+                                   SELECT 1
+                                   FROM unnest(COALESCE(c.tags, ARRAY[]::text[])) AS tag
+                                   WHERE tag ILIKE '%%' || rt.term || '%%'
+                               )
+                           ) * 3
+                           +
+                           (
+                               SELECT COUNT(*)
+                               FROM recommendation_terms rt
+                               WHERE EXISTS (
+                                   SELECT 1
+                                   FROM unnest(COALESCE(c.authors, ARRAY[]::text[])) AS author
+                                   WHERE author ILIKE '%%' || rt.term || '%%'
+                               )
+                           ) * 2
+                           + COALESCE(c.rating, 0) / 5.0
+                       ) AS recommendation_score
+
+                FROM candidate_books c
+
+                ORDER BY recommendation_score DESC,
+                         c.rating DESC NULLS LAST,
+                         c.title ASC
+
+                LIMIT %s
+                """
+
+        cursor.execute(
+            query,
+            (
+                terms,
+                limit
+            )
+        )
+
+        return cursor.fetchall()
 
     finally:
 

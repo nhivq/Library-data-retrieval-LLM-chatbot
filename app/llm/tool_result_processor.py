@@ -23,6 +23,8 @@ def process_tool_result(
                         "title": book.get("title"),
                         "publish_date": book.get("publish_date"),
                         "rating": book.get("rating"),
+                        "recommendation_score": book.get("recommendation_score"),
+                        "similarity_score": book.get("similarity_score"),
                         "authors": book.get("authors"),
                         "tags": book.get("tags")[:3] if book.get("tags") else None,
                     }

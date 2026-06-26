@@ -5,7 +5,7 @@ from fastapi import (
     Depends
 )
 from app.database.connection import get_db
-from app.schemas.book_schemas import BookResponse, SimilarBookResponse
+from app.schemas.book_schemas import BookResponse, SimilarBookResponse, RecommendationBookResponse
 from app.services import book_service
 
 router=APIRouter(
@@ -77,6 +77,34 @@ def search_books(
         raise HTTPException(  # Standardize API behaviour
             status_code=400, # Return proper HTTP status codes & meaningful error messages
             detail="Could not search books"
+        )
+
+
+# ---------- Recommend Books ----------
+# Path allows:
+# /books/recommendations?prompt=japanese history drama voice
+@router.get(
+    "/recommendations",
+    response_model=list[RecommendationBookResponse]
+)
+def recommend_books(
+        prompt: str,
+        limit: int = 10,
+        conn=Depends(get_db)
+):
+    try:
+
+        return book_service.recommend_books(
+            prompt=prompt,
+            limit=limit,
+            conn=conn
+        )
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Could not recommend books"
         )
 
 

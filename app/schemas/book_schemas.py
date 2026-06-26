@@ -21,3 +21,13 @@ class SimilarBookResponse(BaseModel):
     rating: float | None = None
     authors: list[str] = []
     similarity_score: float
+
+
+class RecommendationBookResponse(BaseModel):
+    work_key: str
+    title: str
+    tags: list[str] | None = None
+    publish_date: date | None = None
+    rating: float | None = None
+    authors: list[str] = []
+    recommendation_score: float

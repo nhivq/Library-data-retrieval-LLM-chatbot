@@ -44,6 +44,42 @@ q: str | None = None,
 
 
 @mcp.tool(
+    description="""
+Recommend books from a natural-language taste or mood description.
+
+Use this when the user asks for books by vibe, mood, tone, culture,
+setting, theme, or a mixed request like "Japanese history with a dramatic voice".
+
+Before calling this tool, rewrite the user's taste into a rich search prompt
+with concrete related terms. Example:
+User: "Japanese history with a dramatic voice"
+Tool prompt: "Japanese Japan history historical culture war drama dramatic emotional literary narrative"
+
+Returns ranked recommendations from the database.
+"""
+)
+def recommend_books(
+    prompt: str,
+    limit: int = 10
+):
+
+    db = get_db()
+    conn = next(db)
+
+    try:
+
+        return book_service.recommend_books(
+            prompt=prompt,
+            limit=limit,
+            conn=conn
+        )
+
+    finally:
+
+        db.close()
+
+
+@mcp.tool(
     description="Get one book by its exact work_key."
 )
 def get_book(
