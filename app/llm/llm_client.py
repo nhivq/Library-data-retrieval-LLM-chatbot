@@ -88,6 +88,7 @@ async def ask_agent_stream(
         conn = get_connection()
         try:
             formatted_prompt = SYSTEM_PROMPT.format(user_id=user_id)
+            deleted_all_conversations = False
             start = time.perf_counter()
             initialize_conversation(session_id, formatted_prompt, user_id, conn)
             print(
@@ -196,11 +197,12 @@ async def ask_agent_stream(
                     tool_name = tc_data["name"]
                     arguments = json.loads(tc_data["arguments"])
                     print("stream executing tool:", tool_name)
-                    # Inject authenticated user_id only for bookmark operations.
+                    # Inject authenticated user_id for tools that modify user data.
                     if tool_name in [
                         "save_bookmarks",
                         "get_bookmarks",
-                        "delete_bookmarks"
+                        "delete_bookmarks",
+                        "delete_all_conversations"
                     ]:
                         arguments["user_id"] = user_id
                     try:
@@ -258,6 +260,8 @@ async def ask_agent_stream(
                                 "status": "completed"
                             }
                         )
+                        if tool_name == "delete_all_conversations":
+                            deleted_all_conversations = True
                         step_number += 1
                         # Append assistant tool call reference and tool response to history.
                         messages.append(
@@ -299,15 +303,16 @@ async def ask_agent_stream(
                 }
             )
             yield f"data: {payload}\n\n"
-            # Save the final answer to the database after yielding complete,
-            # so the user sees the output immediately without waiting for database writes.
-            save_message(
-                session_id,
-                "assistant",
-                assistant_text,
-                user_id,
-                conn
-            )
+            # If the user asked to delete all history, do not recreate
+            # a new conversation by saving the final confirmation message.
+            if not deleted_all_conversations:
+                save_message(
+                    session_id,
+                    "assistant",
+                    assistant_text,
+                    user_id,
+                    conn
+                )
         
         except Exception as e:
             print("STREAM ERROR:")

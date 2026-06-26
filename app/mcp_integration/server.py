@@ -2,7 +2,7 @@ from fastmcp import FastMCP
 from app.database.connection import get_db
 from app.schemas.bookmark_schemas import Bookmark
 from app.schemas.user_schemas import LoginRequest, RegisterRequest
-from app.services import author_service, book_service, bookmark_service, auth_service
+from app.services import author_service, book_service, bookmark_service, auth_service, conversation_service
 
 
 # Create and name MCP server
@@ -240,6 +240,35 @@ def delete_bookmarks(
             conn=conn
         )
     
+    finally:
+
+        db.close()
+
+
+# ---------- Conversation Tools ----------
+
+@mcp.tool(
+    description="Delete all chat conversations for the current authenticated user."
+)
+def delete_all_conversations(
+    user_id: int
+):
+
+    db = get_db()
+    conn = next(db)
+
+    try:
+
+        deleted_count = conversation_service.delete_all_conversations(
+            user_id=user_id,
+            conn=conn
+        )
+
+        return {
+            "message": "Conversations deleted",
+            "deleted_count": deleted_count
+        }
+
     finally:
 
         db.close()

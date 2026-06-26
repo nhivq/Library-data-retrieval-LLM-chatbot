@@ -3,6 +3,7 @@ from app.database.connection import get_connection
 from app.services.conversation_service import (
     get_messages,
     delete_conversation,
+    delete_all_conversations,
     get_all_conversations
 )
 from app.core.dependencies import get_current_user
@@ -52,6 +53,31 @@ def get_conversations(
 
     finally:
         conn.close()
+
+
+# ---------- Clear all conversations ----------
+@router.delete("/")
+def delete_conversations(
+    user=Depends(get_current_user)
+):
+
+    conn = get_connection()
+
+    try:
+
+        deleted_count = delete_all_conversations(
+            user["user_id"],
+            conn
+        )
+
+        return {
+            "message": "Conversations deleted",
+            "deleted_count": deleted_count
+        }
+
+    finally:
+        conn.close()
+
 
 # ---------- Clear a session's conversations ----------
 @router.delete("/{session_id}")

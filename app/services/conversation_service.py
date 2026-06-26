@@ -307,3 +307,38 @@ def delete_conversation(
     finally:
 
         cursor.close()
+
+
+def delete_all_conversations(
+        user_id: int,
+        conn
+):
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+
+        # Delete only conversations owned by this user.
+        # Messages are removed by the ON DELETE CASCADE rule.
+        query = """
+            DELETE
+            FROM conversations
+            WHERE user_id = %s
+            """
+
+        cursor.execute(query, (user_id,))
+
+        deleted_count = cursor.rowcount
+
+        conn.commit()
+
+        return deleted_count
+
+    except Exception:
+
+        conn.rollback()
+
+        raise
+
+    finally:
+
+        cursor.close()

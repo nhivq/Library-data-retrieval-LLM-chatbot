@@ -96,18 +96,55 @@ function renderBackendConversations(convs){
   item.className="conv-item";
 
   item.innerHTML=`
-  <span class="conv-item-label">${escapeHtml(formatConversationLabel(conv, index))}</span>
-  <span class="conv-item-time">${escapeHtml(shortSessionId(conv.session_id))}</span>
+  <span class="conv-item-text">
+    <span class="conv-item-label">${escapeHtml(formatConversationLabel(conv, index))}</span>
+    <span class="conv-item-time">${escapeHtml(shortSessionId(conv.session_id))}</span>
+  </span>
+  <button class="conv-delete" title="Delete conversation">×</button>
   `;
   item.onclick=()=>{
      currentSessionId = conv.session_id;
      loadConversationFromBackend(conv.session_id);
   };
+  item.querySelector('.conv-delete').addEventListener('click', (event) => {
+     event.stopPropagation();
+     deleteConversation(conv.session_id);
+  });
   if (conv.session_id === currentSessionId) {
     item.classList.add('active');
   }
   list.appendChild(item);
   });
+}
+
+async function deleteConversation(sessionId){
+
+  try{
+
+    const res = await authFetch(
+      `${API_BASE}/conversations/${sessionId}`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    if(!res.ok)
+      throw new Error(`HTTP ${res.status}`);
+
+    if(sessionId === currentSessionId){
+      ConvHistory.newConversation();
+      showWelcome();
+    }
+
+    fetchConversations();
+
+  }
+  catch(err){
+    console.error(
+      "Delete conversation error:",
+      err
+    );
+  }
 }
 
 // ── Loading conversation ──────────────────────────────────────

@@ -182,12 +182,20 @@ html, body {
   transition: background .15s, border-color .15s, transform .15s;
   border: 1px solid var(--border);
   background: #fce8f0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 8px;
+}
+.conv-item:hover    { background: #f5c8d8; transform: translateY(-1px); }
+.conv-item.active   { background: #f5c0d8; border-color: var(--accent); }
+
+.conv-item-text {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-.conv-item:hover    { background: #f5c8d8; transform: translateY(-1px); }
-.conv-item.active   { background: #f5c0d8; border-color: var(--accent); }
 
 .conv-item-label {
   font-size: 13px;
@@ -201,6 +209,29 @@ html, body {
   font-size: 10px;
   color: var(--text-muted);
   word-break: break-all;
+}
+
+.conv-delete {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  line-height: 1;
+  opacity: .65;
+  transition: opacity .15s, border-color .15s, color .15s;
+}
+
+.conv-item:hover .conv-delete {
+  opacity: 1;
+}
+
+.conv-delete:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ── Bookmark List ────────────────────────────────────────── */
