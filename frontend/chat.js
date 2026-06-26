@@ -315,17 +315,21 @@ function renderMarkdown(text) {
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
   );
   html = html.replace(
+    /work_key:\s*(\/works\/OL\d+[A-Z]\b|\bOL\d+[A-Z]\b)/gi,
+    (_, workKey) => {
+      const normalized = normalizeOpenLibraryWorkUrl(workKey);
+      return `work_key: <a href="${normalized}" target="_blank" rel="noopener noreferrer">${normalized}</a>`;
+    }
+  );
+  html = html.replace(
     /work_key:\s*\((https?:\/\/[^)\s]+)\)/gi,
     (_, url) => {
-      const workKeyMatch = url.match(/\/works\/[A-Za-z0-9]+W|\b[A-Za-z0-9]+W\b/);
-      const normalized = workKeyMatch
-        ? `https://openlibrary.org${workKeyMatch[0].startsWith('/works/') ? workKeyMatch[0] : `/works/${workKeyMatch[0]}`}`
-        : url;
+      const normalized = normalizeOpenLibraryWorkUrl(url);
       return `work_key: (<a href="${normalized}" target="_blank" rel="noopener noreferrer">${normalized}</a>)`;
     }
   );
   html = html.replace(
-    /(^|[^"'=])(https?:\/\/[^\s<)]+)/g,
+    /(^|[^"'=>])(https?:\/\/[^\s<)]+)/g,
     (_, prefix, url) => `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
   );
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
@@ -415,6 +419,25 @@ function renderMarkdown(text) {
   html = out.join('\n');
 
   return html;
+}
+
+function normalizeOpenLibraryWorkUrl(value) {
+
+  // Accept either the raw database key or an OpenLibrary URL,
+  // then render a real link instead of a placeholder.
+  const workKeyMatch = String(value).match(
+    /\/works\/OL\d+[A-Z]\b|\bOL\d+[A-Z]\b/i
+  );
+
+  if(!workKeyMatch){
+    return value;
+  }
+
+  const workKey = workKeyMatch[0].startsWith('/works/')
+    ? workKeyMatch[0]
+    : `/works/${workKeyMatch[0]}`;
+
+  return `https://openlibrary.org${workKey}`;
 }
 
 // ── Message builders ──────────────────────────────────────────
