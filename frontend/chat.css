@@ -61,7 +61,12 @@ html, body {
   margin-right: auto;
 }
 
-.brand-icon  { font-size: 20px; line-height: 1; }
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 
 .brand-name {
   font-family: var(--font-serif);
