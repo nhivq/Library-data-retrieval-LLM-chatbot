@@ -10,6 +10,7 @@ class BookResponse(BaseModel): # Inherit baseModel from pydantic for automatic v
     tags: list[str] | None = None
     publish_date: date | None = None
     rating: float | None = None
+    cover_id: int | None = None
     authors: list[str] = []
 
 
@@ -19,6 +20,7 @@ class SimilarBookResponse(BaseModel):
     tags: list[str] | None = None
     publish_date: date | None = None
     rating: float | None = None
+    cover_id: int | None = None
     authors: list[str] = []
     similarity_score: float
 
@@ -29,6 +31,7 @@ class RecommendationBookResponse(BaseModel):
     tags: list[str] | None = None
     publish_date: date | None = None
     rating: float | None = None
+    cover_id: int | None = None
     authors: list[str] = []
     matched_concept_count: int
     concept_count: int

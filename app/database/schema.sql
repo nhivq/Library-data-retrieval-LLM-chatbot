@@ -10,11 +10,21 @@ CREATE TABLE IF NOT EXISTS books(
 
     title TEXT NOT NULL,
 
+    description TEXT,
+
     tags TEXT[],
+
+    languages TEXT[],
+
+    publishers TEXT[],
+
+    cover_id INTEGER,
 
     publish_date DATE,
 
-    rating DOUBLE PRECISION
+    rating DOUBLE PRECISION,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 

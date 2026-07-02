@@ -23,6 +23,7 @@ def process_tool_result(
                         "title": book.get("title"),
                         "publish_date": book.get("publish_date"),
                         "rating": book.get("rating"),
+                        "cover_id": book.get("cover_id"),
                         "recommendation_score": book.get("recommendation_score"),
                         "matched_concept_count": book.get("matched_concept_count"),
                         "concept_count": book.get("concept_count"),

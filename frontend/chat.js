@@ -100,7 +100,7 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
       if (done) {
         stopTimer();
         if (answer || progress.length > 0) {
-          replaceWithAnswer(thinkingRow, answer, progress);
+          replaceWithAnswer(thinkingRow, answer, progress, true);
         }
         console.log("stream finished");
         break;
@@ -138,7 +138,7 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
           if (data.type === 'complete') {
             stopTimer();
             if (data.progress) progress = data.progress;
-            replaceWithAnswer(thinkingRow, answer, progress);
+            replaceWithAnswer(thinkingRow, answer, progress, true);
             ConvHistory.addMessage(text, answer);
           }
         } catch (e) {
@@ -181,7 +181,7 @@ function updateThinkingProgress(row, progress) {
 }
 
 // ── Replace thinking bubble with answer + activity panel ─────
-function replaceWithAnswer(row, answer, steps) {
+function replaceWithAnswer(row, answer, steps, enhanceBooks = false) {
   row.classList.remove('thinking');
   const bubble = row.querySelector('.msg-bubble');
 
@@ -191,6 +191,9 @@ function replaceWithAnswer(row, answer, steps) {
   answerDiv.innerHTML = renderMarkdown(answer);
   bubble.innerHTML = '';
   bubble.appendChild(answerDiv);
+  if (enhanceBooks) {
+    enhanceBookLinks(answerDiv);
+  }
 
   // 2. Agent activity panel (only if there are steps)
   if (steps.length > 0) {
@@ -440,6 +443,108 @@ function normalizeOpenLibraryWorkUrl(value) {
   return `https://openlibrary.org${workKey}`;
 }
 
+function getWorkKeyFromOpenLibraryUrl(value) {
+  const match = String(value).match(/\/works\/OL\d+[A-Z]\b/i);
+  return match ? match[0] : null;
+}
+
+function getCoverUrl(coverId) {
+  return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
+}
+
+async function enhanceBookLinks(container) {
+  const anchors = [...container.querySelectorAll('a[href*="openlibrary.org/works/"]')];
+  const seen = new Set();
+
+  for (const anchor of anchors) {
+    const workKey = getWorkKeyFromOpenLibraryUrl(anchor.href);
+
+    if (!workKey || seen.has(workKey)) {
+      continue;
+    }
+
+    seen.add(workKey);
+
+    try {
+      const response = await authFetch(`${API_BASE}/books${workKey}`);
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const book = await response.json();
+      const card = buildBookCoverCard(book);
+      const host = anchor.closest('li, p') || anchor;
+
+      if (host.querySelector && host.querySelector('.book-cover-card')) {
+        continue;
+      }
+
+      host.insertBefore(card, host.firstChild);
+    } catch (error) {
+      console.log('Could not load book cover:', workKey, error);
+    }
+  }
+
+  scrollToBottom();
+}
+
+function buildBookCoverCard(book) {
+  const card = document.createElement('div');
+  card.className = 'book-cover-card';
+
+  const cover = document.createElement('div');
+  cover.className = 'book-cover-frame';
+
+  if (book.cover_id) {
+    const image = document.createElement('img');
+    image.className = 'book-cover-img';
+    image.src = getCoverUrl(book.cover_id);
+    image.alt = book.title || 'Book cover';
+    image.loading = 'lazy';
+    image.addEventListener('error', () => {
+      cover.replaceChildren(buildBookCoverFallback(book));
+    });
+    cover.appendChild(image);
+  } else {
+    cover.appendChild(buildBookCoverFallback(book));
+  }
+
+  card.appendChild(cover);
+  return card;
+}
+
+function buildBookCoverFallback(book) {
+  const fallback = document.createElement('div');
+  fallback.className = 'book-cover-fallback';
+
+  const title = document.createElement('div');
+  title.className = 'book-cover-title';
+  title.textContent = truncateText(book.title || 'Untitled book', 72);
+
+  const authors = document.createElement('div');
+  authors.className = 'book-cover-authors';
+  authors.textContent = truncateText((book.authors || []).join(', '), 44);
+
+  fallback.appendChild(title);
+
+  if (authors.textContent) {
+    fallback.appendChild(authors);
+  }
+
+  return fallback;
+}
+
+function truncateText(value, maxLength) {
+  const text = String(value || '').trim();
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 3).trim()}...`;
+}
+
 // ── Message builders ──────────────────────────────────────────
 function appendMessage(role, text) {
   const row = document.createElement('div');
@@ -457,6 +562,7 @@ function appendMessage(role, text) {
   } else {
     bubble.classList.add('markdown');
     bubble.innerHTML = renderMarkdown(text);
+    enhanceBookLinks(bubble);
   }
 
   row.appendChild(label);

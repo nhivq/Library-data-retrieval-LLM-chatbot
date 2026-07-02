@@ -45,7 +45,8 @@ def get_bookmark(
                        b.title, 
                        b.tags, 
                        b.publish_date, 
-                       b.rating
+                       b.rating,
+                       b.cover_id
 
                 FROM bookmarks bm
 

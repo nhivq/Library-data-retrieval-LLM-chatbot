@@ -87,6 +87,7 @@ def get_books(
                        b.tags,
                        b.publish_date,
                        b.rating,
+                       b.cover_id,
                        COALESCE(
                            ARRAY_AGG(a.author_name)
                            FILTER (WHERE a.author_name IS NOT NULL),
@@ -105,7 +106,8 @@ def get_books(
                          b.title,
                          b.tags,
                          b.publish_date,
-                         b.rating
+                         b.rating,
+                         b.cover_id
 
                 LIMIT %s 
                 """
@@ -141,6 +143,7 @@ def search_books(
                        b.tags,
                        b.publish_date,
                        b.rating,
+                       b.cover_id,
                        COALESCE(  
                            ARRAY_AGG(a.author_name) 
                            FILTER (WHERE a.author_name IS NOT NULL),
@@ -225,7 +228,8 @@ def search_books(
                  b.title,
                  b.tags,
                  b.publish_date,
-                 b.rating
+                 b.rating,
+                 b.cover_id
 
         LIMIT %s
         OFFSET %s
@@ -286,6 +290,7 @@ def recommend_books(
                            b.tags,
                            b.publish_date,
                            b.rating,
+                           b.cover_id,
                            COALESCE(
                                ARRAY_AGG(a.author_name)
                                FILTER (WHERE a.author_name IS NOT NULL),
@@ -304,7 +309,8 @@ def recommend_books(
                              b.title,
                              b.tags,
                              b.publish_date,
-                             b.rating
+                             b.rating,
+                             b.cover_id
                 ),
                 scored_books AS (
                     SELECT c.work_key,
@@ -312,6 +318,7 @@ def recommend_books(
                            c.tags,
                            c.publish_date,
                            c.rating,
+                           c.cover_id,
                            c.authors,
                            (
                                SELECT COUNT(*)
@@ -369,6 +376,7 @@ def recommend_books(
                        s.tags,
                        s.publish_date,
                        s.rating,
+                       s.cover_id,
                        s.authors,
                        s.matched_concept_count,
                        %s AS concept_count,
@@ -411,6 +419,11 @@ def get_specific_book(
         conn=None
 ):
     cursor = conn.cursor(cursor_factory=RealDictCursor)
+    normalized_work_key = (
+        work_key
+        if work_key.startswith("/")
+        else f"/{work_key}"
+    )
 
     try:
 
@@ -420,6 +433,7 @@ def get_specific_book(
                        b.tags, 
                        b.publish_date, 
                        b.rating, 
+                       b.cover_id,
 
                        ARRAY_AGG(a.author_name) AS authors
 
@@ -437,10 +451,11 @@ def get_specific_book(
                          b.title, 
                          b.tags, 
                          b.publish_date, 
-                         b.rating 
+                         b.rating,
+                         b.cover_id
                 """
 
-        cursor.execute(query, (work_key,))
+        cursor.execute(query, (normalized_work_key,))
 
         book = cursor.fetchone()  # Because 1 book can have many authors
 
@@ -464,6 +479,7 @@ def similar_books(
                            b.title,
                            b.tags,
                            b.rating,
+                           b.cover_id,
                            COALESCE(
                                ARRAY_AGG(a.author_name)
                                FILTER (WHERE a.author_name IS NOT NULL),
@@ -478,7 +494,8 @@ def similar_books(
                     GROUP BY b.work_key,
                              b.title,
                              b.tags,
-                             b.rating
+                             b.rating,
+                             b.cover_id
                 ),
                 candidate_books AS (
                     SELECT b.work_key,
@@ -486,6 +503,7 @@ def similar_books(
                            b.tags,
                            b.publish_date,
                            b.rating,
+                           b.cover_id,
                            COALESCE(
                                ARRAY_AGG(a.author_name)
                                FILTER (WHERE a.author_name IS NOT NULL),
@@ -501,13 +519,15 @@ def similar_books(
                              b.title,
                              b.tags,
                              b.publish_date,
-                             b.rating
+                             b.rating,
+                             b.cover_id
                 )
                 SELECT c.work_key,
                        c.title,
                        c.tags,
                        c.publish_date,
                        c.rating,
+                       c.cover_id,
                        c.authors,
                        (
                            COALESCE(
