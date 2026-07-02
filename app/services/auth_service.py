@@ -35,9 +35,9 @@ def register_user(
 
         query="""
         INSERT INTO users
-        (username, email, password)
+        (username, email, password, role)
 
-        VALUES(%s,%s,%s)
+        VALUES(%s,%s,%s,%s)
         """
 
         hashed_password = hash_password(
@@ -49,7 +49,8 @@ def register_user(
             (
                 username,
                 email,
-                hashed_password
+                hashed_password,
+                "user"
             )
         )
 

@@ -44,6 +44,7 @@
           <span class="brand-name">QuynhNhiVu</span>
         </div>
           <span class="brand-sub">AI Book Retrieval</span>
+          <a class="topbar-link" id="adminDashboardLink" href="admin.html" hidden>Dashboard</a>
           <button class="logout-btn" id="logoutBtn">Logout</button>
       </header>
 
@@ -108,6 +109,9 @@
   </div>
  
   <script src="auth.js"></script>
+  <script>
+    showAdminNavIfAllowed();
+  </script>
   <script src="chat.js"></script>
   <script src="sidebar.js"></script>
 </body>

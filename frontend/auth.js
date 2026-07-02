@@ -116,6 +116,16 @@ const ApiService = {
   },
 };
 
+async function getCurrentUser() {
+  const res = await authFetch(`${API_BASE}/auth/me`);
+
+  if (!res.ok) {
+    throw new Error("Could not load current user.");
+  }
+
+  return res.json();
+}
+
 // ── Refresh function ──────────────────────────────────────────
 async function refreshAccessToken(){
 
@@ -195,6 +205,42 @@ function requireAuth() {
   const onRegisterPage = window.location.pathname.endsWith("register.html");
   if (!Auth.isLoggedIn() && !onLoginPage && !onRegisterPage) {
     window.location.replace("index.html");
+  }
+}
+
+async function requireAdmin() {
+  requireAuth();
+
+  try {
+    const user = await getCurrentUser();
+
+    if (user.role !== "admin") {
+      window.location.replace("chat.html");
+      return null;
+    }
+
+    return user;
+  } catch (err) {
+    logout();
+    return null;
+  }
+}
+
+async function showAdminNavIfAllowed() {
+  const adminLink = document.getElementById("adminDashboardLink");
+
+  if (!adminLink || !Auth.isLoggedIn()) {
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser();
+
+    if (user.role === "admin") {
+      adminLink.hidden = false;
+    }
+  } catch (err) {
+    console.error("Admin navigation check failed:", err);
   }
 }
 

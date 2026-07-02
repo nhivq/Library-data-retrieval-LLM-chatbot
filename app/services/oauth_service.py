@@ -85,10 +85,11 @@ def get_or_create_google_user(
                 username,
                 email,
                 oauth_provider,
-                oauth_id
+                oauth_id,
+                role
             )
 
-            VALUES(%s,%s,%s,%s)
+            VALUES(%s,%s,%s,%s,%s)
 
             RETURNING *
             """,
@@ -96,7 +97,8 @@ def get_or_create_google_user(
                 username,
                 email,
                 "google",
-                google_id
+                google_id,
+                "user"
             )
         )
 

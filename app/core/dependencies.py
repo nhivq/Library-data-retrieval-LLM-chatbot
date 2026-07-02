@@ -1,6 +1,8 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
+from psycopg2.extras import RealDictCursor
 
+from app.database.connection import get_db
 from app.core.security import decode_access_token
 
 
@@ -8,7 +10,8 @@ security = HTTPBearer()
 
 
 def get_current_user(
-        credentials=Depends(security)
+        credentials=Depends(security),
+        conn=Depends(get_db)
 ):
     
     token = credentials.credentials
@@ -19,11 +22,56 @@ def get_current_user(
 
         user_id = int(str(payload["sub"]))
 
-        return {"user_id": user_id}
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        try:
+
+            cursor.execute(
+                """
+                SELECT user_id,
+                       username,
+                       email,
+                       COALESCE(role, 'user') AS role
+                FROM users
+                WHERE user_id = %s
+                """,
+                (user_id,)
+            )
+
+            user = cursor.fetchone()
+
+            if not user:
+                raise HTTPException(
+                    status_code=401,
+                    detail="User not found"
+                )
+
+            return dict(user)
+
+        finally:
+
+            cursor.close()
     
+    except HTTPException:
+
+        raise
+
     except Exception:
 
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
         )
+
+
+def get_current_admin_user(
+        user=Depends(get_current_user)
+):
+
+    if user.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
+    return user

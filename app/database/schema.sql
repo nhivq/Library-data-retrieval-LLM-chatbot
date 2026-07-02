@@ -44,7 +44,15 @@ CREATE TABLE IF NOT EXISTS users(
 
     email TEXT UNIQUE NOT NULL,
 
-    password TEXT NOT NULL DEFAULT ''
+    password TEXT NOT NULL DEFAULT '',
+
+    oauth_provider TEXT,
+
+    oauth_id TEXT,
+
+    role TEXT NOT NULL DEFAULT 'user',
+
+    UNIQUE(oauth_provider, oauth_id)
 );
 
 

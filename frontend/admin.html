@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="admin.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="admin-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-name">Admin Dashboard</span>
+          <span class="brand-sub">Library Dataset Analytics</span>
+        </div>
+        <a class="topbar-link" href="chat.html">Chat</a>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+      </header>
+
+      <main class="dashboard">
+        <section class="summary-grid" id="summaryGrid" aria-label="Dataset totals"></section>
+
+        <section class="dashboard-grid">
+          <div class="panel panel-wide">
+            <div class="panel-header">
+              <h2>Data Quality</h2>
+              <button class="refresh-btn" id="refreshBtn">Refresh</button>
+            </div>
+            <div class="quality-grid" id="qualityGrid"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Top Authors</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Author</th>
+                    <th>Books</th>
+                  </tr>
+                </thead>
+                <tbody id="topAuthorsBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Top Tags</h2>
+            </div>
+            <div class="tag-list" id="topTagsList"></div>
+          </div>
+
+          <div class="panel panel-wide">
+            <div class="panel-header">
+              <h2>Recent Books</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Work Key</th>
+                    <th>Created</th>
+                  </tr>
+                </thead>
+                <tbody id="recentBooksBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>
