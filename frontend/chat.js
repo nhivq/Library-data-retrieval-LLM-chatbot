@@ -21,6 +21,9 @@ const QUICK_ACTIONS = [
   'Recommend similar books'
 ];
 
+const bookDetailsCache = new Map();
+const bookDetailsRequests = new Map();
+
 if (quickActionsList) {
   QUICK_ACTIONS.forEach((prompt) => {
     const button = document.createElement('button');
@@ -100,7 +103,7 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
       if (done) {
         stopTimer();
         if (answer || progress.length > 0) {
-          replaceWithAnswer(thinkingRow, answer, progress, true);
+          replaceWithAnswer(thinkingRow, answer, progress);
         }
         console.log("stream finished");
         break;
@@ -138,7 +141,7 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
           if (data.type === 'complete') {
             stopTimer();
             if (data.progress) progress = data.progress;
-            replaceWithAnswer(thinkingRow, answer, progress, true);
+            replaceWithAnswer(thinkingRow, answer, progress);
             ConvHistory.addMessage(text, answer);
           }
         } catch (e) {
@@ -181,7 +184,7 @@ function updateThinkingProgress(row, progress) {
 }
 
 // ── Replace thinking bubble with answer + activity panel ─────
-function replaceWithAnswer(row, answer, steps, enhanceBooks = false) {
+function replaceWithAnswer(row, answer, steps) {
   row.classList.remove('thinking');
   const bubble = row.querySelector('.msg-bubble');
 
@@ -191,9 +194,7 @@ function replaceWithAnswer(row, answer, steps, enhanceBooks = false) {
   answerDiv.innerHTML = renderMarkdown(answer);
   bubble.innerHTML = '';
   bubble.appendChild(answerDiv);
-  if (enhanceBooks) {
-    enhanceBookLinks(answerDiv);
-  }
+  enhanceBookLinks(answerDiv);
 
   // 2. Agent activity panel (only if there are steps)
   if (steps.length > 0) {
@@ -466,13 +467,12 @@ async function enhanceBookLinks(container) {
     seen.add(workKey);
 
     try {
-      const response = await authFetch(`${API_BASE}/books${workKey}`);
+      const book = await fetchBookDetails(workKey);
 
-      if (!response.ok) {
+      if (!book || !container.isConnected) {
         continue;
       }
 
-      const book = await response.json();
       const card = buildBookResultCard(book);
       const host = anchor.closest('li, p') || anchor;
 
@@ -487,6 +487,34 @@ async function enhanceBookLinks(container) {
   }
 
   scrollToBottom();
+}
+
+async function fetchBookDetails(workKey) {
+  if (bookDetailsCache.has(workKey)) {
+    return bookDetailsCache.get(workKey);
+  }
+
+  if (bookDetailsRequests.has(workKey)) {
+    return bookDetailsRequests.get(workKey);
+  }
+
+  const request = authFetch(`${API_BASE}/books${workKey}`)
+    .then(async (response) => {
+      if (!response.ok) {
+        return null;
+      }
+
+      const book = await response.json();
+      bookDetailsCache.set(workKey, book);
+      return book;
+    })
+    .finally(() => {
+      bookDetailsRequests.delete(workKey);
+    });
+
+  bookDetailsRequests.set(workKey, request);
+
+  return request;
 }
 
 function replaceBookResult(host, card) {
