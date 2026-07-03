@@ -264,45 +264,78 @@ html, body {
   flex: 1;
   overflow-y: auto;
   padding: 8px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px;
 }
 
 .bookmark-item {
-  padding: 10px 12px;
+  padding: 8px;
   border-radius: 9px;
   background: #fce8f0;
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  align-items: stretch;
+  gap: 7px;
   animation: fadeUp .2s ease both;
 }
 
-.bookmark-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
+.bookmark-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #d9d9d9;
+  box-shadow: 0 2px 7px rgba(45, 15, 30, .12);
 }
 
-.bookmark-key {
-  font-family: var(--font-mono);
+.bookmark-cover img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.bookmark-cover-fallback {
+  width: 100%;
+  height: 100%;
+  margin: 7px;
+  border: 2px solid rgba(255, 255, 255, .9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 6px;
+  text-align: center;
+  color: #26313a;
   font-size: 10px;
-  color: var(--text-muted);
-  word-break: break-all;
+  line-height: 1.25;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.bookmark-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+  min-height: 30px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .bookmark-remove {
-  align-self: flex-end;
-  margin-top: 4px;
+  align-self: stretch;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 10.5px;
   font-family: var(--font-mono);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 5px;
   cursor: pointer;
   transition: border-color .15s, color .15s;

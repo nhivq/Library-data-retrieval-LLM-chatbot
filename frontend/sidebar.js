@@ -210,14 +210,55 @@ function renderBookmarks(bookmarks) {
   bookmarks.forEach(bm => {
     const item = document.createElement('div');
     item.className = 'bookmark-item';
-    item.innerHTML = `
-      <span class="bookmark-title">${escapeHtml(bm.title || 'Untitled')}</span>
-      <span class="bookmark-key">${escapeHtml(bm.work_key || '')}</span>
-      <button class="bookmark-remove" data-id="${escapeHtml(String(bm.id || bm.work_key))}">Remove</button>
-    `;
-    item.querySelector('.bookmark-remove').addEventListener('click', () => removeBookmark(bm));
+
+    const cover = document.createElement('div');
+    cover.className = 'bookmark-cover';
+
+    if (bm.cover_id) {
+      const image = document.createElement('img');
+      image.src = `https://covers.openlibrary.org/b/id/${bm.cover_id}-M.jpg`;
+      image.alt = bm.title || 'Book cover';
+      image.loading = 'lazy';
+      image.addEventListener('error', () => {
+        cover.replaceChildren(buildBookmarkFallback(bm));
+      });
+      cover.appendChild(image);
+    } else {
+      cover.appendChild(buildBookmarkFallback(bm));
+    }
+
+    const title = document.createElement('span');
+    title.className = 'bookmark-title';
+    title.textContent = bm.title || 'Untitled';
+
+    const removeButton = document.createElement('button');
+    removeButton.className = 'bookmark-remove';
+    removeButton.type = 'button';
+    removeButton.textContent = 'Remove';
+    removeButton.addEventListener('click', () => removeBookmark(bm));
+
+    item.appendChild(cover);
+    item.appendChild(title);
+    item.appendChild(removeButton);
     list.appendChild(item);
   });
+}
+
+function buildBookmarkFallback(bookmark) {
+  const fallback = document.createElement('div');
+  fallback.className = 'bookmark-cover-fallback';
+  fallback.textContent = truncateText(bookmark.title || 'Untitled', 54);
+  return fallback;
+}
+
+function truncateText(value, maxLength) {
+  const text = String(value || '').trim();
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 3).trim()}...`;
 }
 
 async function removeBookmark(bm) {
