@@ -128,6 +128,9 @@ def search_books(
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
+        published_before_year: int | None = None,
+        published_after_year: int | None = None,
+        published_year: int | None = None,
         page:int=1, # with nothing behind, this is mandatory -> without it, fail validation
         limit:int=10,
         conn = None # Used if caller provides connection; otherwise, do nothing
@@ -210,6 +213,33 @@ def search_books(
 
             params.append(
                 f"%{tag}%"
+            )
+
+        if published_year is not None:
+            query += """
+            AND EXTRACT(YEAR FROM b.publish_date) = %s
+            """
+
+            params.append(
+                published_year
+            )
+
+        if published_before_year is not None:
+            query += """
+            AND b.publish_date < make_date(%s, 1, 1)
+            """
+
+            params.append(
+                published_before_year
+            )
+
+        if published_after_year is not None:
+            query += """
+            AND b.publish_date >= make_date(%s, 1, 1)
+            """
+
+            params.append(
+                published_after_year
             )
 
         if page < 1: # manually validate; query validation isn't used in this case for simplicity

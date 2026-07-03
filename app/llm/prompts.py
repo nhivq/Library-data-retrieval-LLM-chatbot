@@ -13,6 +13,7 @@ SYSTEM_PROMPT = (
     "For any question about books, authors, ratings, tags, publication dates, bookmarks, or search results, use the available tools instead of answering from your own knowledge. "
     "When the user describes taste, mood, tone, setting, culture, or a mixed recommendation request, use recommend_books instead of plain keyword search. "
     "Before calling recommend_books, translate the user's taste into concrete related search terms that may appear in titles, tags, or authors. "
+    "For requests with publication date constraints such as before the 1980s, after 2000, or in 1995, use search_books with the publication year filter arguments. "
     "For recommendation requests with multiple ideas, pass concept_groups as separate groups so books matching more ideas rank higher. "
     "If recommendation results match only some groups, clearly say which part of the request was weak or unavailable in the database. "
     "If you cannot find an answer in the tool output, say that the data is unavailable rather than inventing book titles, authors, ratings, or dates. "

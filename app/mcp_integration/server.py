@@ -12,13 +12,24 @@ mcp = FastMCP("Book Retrieval MCP")
 # ---------- Book Tools ----------
 
 @mcp.tool(
-    description="Search books by title, author, rating, and tag filters. Returns matching books from the database."
+    description="""
+Search books by title, author, rating, tag, and publication year filters.
+
+Use published_before_year for requests like "before the 1980s" or
+"published before 1980". Use published_after_year for requests like
+"after 2000" or "since 1990". Use published_year for an exact year.
+
+Returns matching books from the database.
+"""
 )
 def search_books(
 q: str | None = None,
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
+        published_before_year: int | None = None,
+        published_after_year: int | None = None,
+        published_year: int | None = None,
         page:int=1,
         limit:int=10,
 ):
@@ -33,6 +44,9 @@ q: str | None = None,
             author=author,
             min_rating=min_rating,
             tag=tag,
+            published_before_year=published_before_year,
+            published_after_year=published_after_year,
+            published_year=published_year,
             page=page,
             limit=limit,
             conn=conn

@@ -55,6 +55,9 @@ def search_books(
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
+        published_before_year: int | None = None,
+        published_after_year: int | None = None,
+        published_year: int | None = None,
         page:int=1,
         limit:int=10,
         conn=Depends(get_db)
@@ -66,6 +69,9 @@ def search_books(
             author=author,
             min_rating=min_rating,
             tag=tag,
+            published_before_year=published_before_year,
+            published_after_year=published_after_year,
+            published_year=published_year,
             page=page,
             limit=limit,
             conn=conn
