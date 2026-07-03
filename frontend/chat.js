@@ -473,14 +473,14 @@ async function enhanceBookLinks(container) {
       }
 
       const book = await response.json();
-      const card = buildBookCoverCard(book);
+      const card = buildBookResultCard(book);
       const host = anchor.closest('li, p') || anchor;
 
       if (host.querySelector && host.querySelector('.book-result-card')) {
         continue;
       }
 
-      wrapBookResult(host, card);
+      replaceBookResult(host, card);
     } catch (error) {
       console.log('Could not load book cover:', workKey, error);
     }
@@ -489,21 +489,19 @@ async function enhanceBookLinks(container) {
   scrollToBottom();
 }
 
-function wrapBookResult(host, coverCard) {
-  const layout = document.createElement('div');
-  layout.className = 'book-result-card';
-
-  const details = document.createElement('div');
-  details.className = 'book-result-details';
-
-  while (host.firstChild) {
-    details.appendChild(host.firstChild);
-  }
-
-  layout.appendChild(coverCard);
-  layout.appendChild(details);
-  host.appendChild(layout);
+function replaceBookResult(host, card) {
+  host.replaceChildren(card);
   host.classList.add('book-result-item');
+}
+
+function buildBookResultCard(book) {
+  const card = document.createElement('div');
+  card.className = 'book-result-card';
+
+  card.appendChild(buildBookCoverCard(book));
+  card.appendChild(buildBookDetails(book));
+
+  return card;
 }
 
 function buildBookCoverCard(book) {
@@ -529,6 +527,116 @@ function buildBookCoverCard(book) {
 
   card.appendChild(cover);
   return card;
+}
+
+function buildBookDetails(book) {
+  const details = document.createElement('div');
+  details.className = 'book-result-details';
+
+  const title = document.createElement('a');
+  title.className = 'book-result-title';
+  title.href = normalizeOpenLibraryWorkUrl(book.work_key || '');
+  title.target = '_blank';
+  title.rel = 'noopener noreferrer';
+  title.textContent = book.title || 'Untitled book';
+
+  details.appendChild(title);
+  details.appendChild(buildBookMetaRow('Author', formatAuthors(book.authors)));
+  details.appendChild(buildBookMetaRow('Rating', formatRating(book.rating)));
+  details.appendChild(buildBookMetaRow('Published', formatDate(book.publish_date)));
+  details.appendChild(buildBookTags(book.tags || []));
+  details.appendChild(buildBookActions(book));
+
+  return details;
+}
+
+function buildBookMetaRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'book-meta-row';
+
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'book-meta-label';
+  labelSpan.textContent = label;
+
+  const valueSpan = document.createElement('span');
+  valueSpan.className = 'book-meta-value';
+  valueSpan.textContent = value || 'Unavailable';
+
+  row.appendChild(labelSpan);
+  row.appendChild(valueSpan);
+
+  return row;
+}
+
+function buildBookTags(tags) {
+  const row = document.createElement('div');
+  row.className = 'book-tag-row';
+
+  tags.slice(0, 4).forEach((tag) => {
+    const pill = document.createElement('span');
+    pill.className = 'book-tag-pill';
+    pill.textContent = tag;
+    row.appendChild(pill);
+  });
+
+  return row;
+}
+
+function buildBookActions(book) {
+  const actions = document.createElement('div');
+  actions.className = 'book-actions';
+
+  const bookmark = document.createElement('button');
+  bookmark.type = 'button';
+  bookmark.className = 'book-action-btn';
+  bookmark.textContent = 'Bookmark';
+  bookmark.addEventListener('click', () => saveBookCardBookmark(book, bookmark));
+
+  const similar = document.createElement('button');
+  similar.type = 'button';
+  similar.className = 'book-action-btn';
+  similar.textContent = 'Find Similar Books';
+  similar.addEventListener('click', () => {
+    handleSend(`Find books similar to ${book.title} with work_key: ${book.work_key}`);
+  });
+
+  actions.appendChild(bookmark);
+  actions.appendChild(similar);
+
+  return actions;
+}
+
+async function saveBookCardBookmark(book, button) {
+  const originalText = button.textContent;
+
+  button.disabled = true;
+  button.textContent = 'Saving...';
+
+  try {
+    const response = await authFetch(`${API_BASE}/bookmarks/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        work_key: book.work_key,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    button.textContent = 'Bookmarked';
+
+    if (typeof fetchBookmarks === 'function') {
+      fetchBookmarks();
+    }
+  } catch (error) {
+    console.log('Could not save bookmark:', error);
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 }
 
 function buildBookCoverFallback(book) {
@@ -560,6 +668,43 @@ function truncateText(value, maxLength) {
   }
 
   return `${text.slice(0, maxLength - 3).trim()}...`;
+}
+
+function formatAuthors(authors) {
+  if (!authors || !authors.length) {
+    return null;
+  }
+
+  return authors.slice(0, 3).join(', ');
+}
+
+function formatRating(rating) {
+  if (rating === null || rating === undefined) {
+    return null;
+  }
+
+  return Number(rating).toFixed(1);
+}
+
+function formatDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString(
+    undefined,
+    {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }
+  );
 }
 
 // ── Message builders ──────────────────────────────────────────
