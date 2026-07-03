@@ -806,23 +806,57 @@ html, body {
   margin: 10px 0;
 }
 
+.msg-bubble.markdown li.book-result-item {
+  margin: 10px 0 12px;
+  padding-left: 0;
+}
+
+.book-result-card {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  width: min(100%, 640px);
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .34);
+}
+
+.book-result-details {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.book-result-details > a:first-child,
+.book-result-details > strong:first-child a {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.book-result-details br {
+  display: block;
+  content: "";
+  margin-top: 4px;
+}
+
 .book-cover-card {
-  display: inline-flex;
-  vertical-align: top;
-  margin: 2px 12px 8px 0;
-  width: 112px;
-  min-width: 112px;
+  width: 86px;
+  min-width: 86px;
 }
 
 .book-cover-frame {
-  width: 112px;
+  width: 86px;
   aspect-ratio: 2 / 3;
   background: #d9d9d9;
   border: 1px solid #d2c8ce;
+  border-radius: 4px;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(45, 15, 30, .16);
 }
 
 .book-cover-img {
@@ -835,32 +869,45 @@ html, body {
 .book-cover-fallback {
   width: 100%;
   height: 100%;
-  margin: 10px;
+  margin: 7px;
   border: 2px solid rgba(255, 255, 255, .9);
   color: #26313a;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 10px 8px;
+  gap: 8px;
+  padding: 8px 6px;
   text-align: center;
   background: #d6d6d6;
 }
 
 .book-cover-title {
-  font-size: 12px;
+  font-size: 10.5px;
   line-height: 1.25;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .book-cover-authors {
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1.25;
   color: #6f6670;
   font-style: italic;
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 680px) {
+  .book-result-card {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .book-cover-card,
+  .book-cover-frame {
+    width: 72px;
+    min-width: 72px;
+  }
 }
 
 /* ── Error ────────────────────────────────────────────────── */

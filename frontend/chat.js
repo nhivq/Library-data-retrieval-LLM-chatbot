@@ -476,17 +476,34 @@ async function enhanceBookLinks(container) {
       const card = buildBookCoverCard(book);
       const host = anchor.closest('li, p') || anchor;
 
-      if (host.querySelector && host.querySelector('.book-cover-card')) {
+      if (host.querySelector && host.querySelector('.book-result-card')) {
         continue;
       }
 
-      host.insertBefore(card, host.firstChild);
+      wrapBookResult(host, card);
     } catch (error) {
       console.log('Could not load book cover:', workKey, error);
     }
   }
 
   scrollToBottom();
+}
+
+function wrapBookResult(host, coverCard) {
+  const layout = document.createElement('div');
+  layout.className = 'book-result-card';
+
+  const details = document.createElement('div');
+  details.className = 'book-result-details';
+
+  while (host.firstChild) {
+    details.appendChild(host.firstChild);
+  }
+
+  layout.appendChild(coverCard);
+  layout.appendChild(details);
+  host.appendChild(layout);
+  host.classList.add('book-result-item');
 }
 
 function buildBookCoverCard(book) {
