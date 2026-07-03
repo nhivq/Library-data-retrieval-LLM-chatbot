@@ -453,9 +453,10 @@ function getCoverUrl(coverId) {
   return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
 }
 
-async function enhanceBookLinks(container) {
+function enhanceBookLinks(container) {
   const anchors = [...container.querySelectorAll('a[href*="openlibrary.org/works/"]')];
   const seen = new Set();
+  const tasks = [];
 
   for (const anchor of anchors) {
     const workKey = getWorkKeyFromOpenLibraryUrl(anchor.href);
@@ -466,27 +467,32 @@ async function enhanceBookLinks(container) {
 
     seen.add(workKey);
 
-    try {
-      const book = await fetchBookDetails(workKey);
+    tasks.push(
+      fetchBookDetails(workKey)
+        .then((book) => {
+          if (!book || !container.isConnected) {
+            return;
+          }
 
-      if (!book || !container.isConnected) {
-        continue;
-      }
+          const card = buildBookResultCard(book);
+          const host = anchor.closest('li, p') || anchor;
 
-      const card = buildBookResultCard(book);
-      const host = anchor.closest('li, p') || anchor;
+          if (!host.isConnected || (host.querySelector && host.querySelector('.book-result-card'))) {
+            return;
+          }
 
-      if (host.querySelector && host.querySelector('.book-result-card')) {
-        continue;
-      }
-
-      replaceBookResult(host, card);
-    } catch (error) {
-      console.log('Could not load book cover:', workKey, error);
-    }
+          replaceBookResult(host, card);
+          scrollToBottom();
+        })
+        .catch((error) => {
+          console.log('Could not load book cover:', workKey, error);
+        })
+    );
   }
 
-  scrollToBottom();
+  if (tasks.length) {
+    Promise.allSettled(tasks).then(scrollToBottom);
+  }
 }
 
 async function fetchBookDetails(workKey) {
