@@ -162,19 +162,44 @@ html, body {
   color: var(--text-muted);
 }
 
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 /* New Chat button */
-.new-chat-btn {
+.new-chat-btn,
+.clear-chat-btn {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
   border-radius: 7px;
   padding: 4px 10px;
   cursor: pointer;
-  transition: background .15s;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.new-chat-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
 }
 .new-chat-btn:hover { background: var(--accent-hover); }
+
+.clear-chat-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.clear-chat-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.clear-chat-btn:disabled {
+  cursor: default;
+  opacity: .65;
+}
 
 /* Refresh button */
 .refresh-btn {

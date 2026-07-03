@@ -108,7 +108,7 @@ function renderBackendConversations(convs){
   };
   item.querySelector('.conv-delete').addEventListener('click', (event) => {
      event.stopPropagation();
-     deleteConversation(conv.session_id);
+     deleteConversation(conv.session_id, item);
   });
   if (conv.session_id === currentSessionId) {
     item.classList.add('active');
@@ -117,9 +117,12 @@ function renderBackendConversations(convs){
   });
 }
 
-async function deleteConversation(sessionId){
+async function deleteConversation(sessionId, item = null){
 
   try{
+    if (item) {
+      item.remove();
+    }
 
     const res = await authFetch(
       `${API_BASE}/conversations/${sessionId}`,
@@ -136,14 +139,51 @@ async function deleteConversation(sessionId){
       showWelcome();
     }
 
-    fetchConversations();
-
   }
   catch(err){
     console.error(
       "Delete conversation error:",
       err
     );
+    fetchConversations();
+  }
+}
+
+async function clearConversations(){
+  const list = document.getElementById("convList");
+  const button = document.getElementById("clearConversationsBtn");
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Clearing";
+  }
+
+  list.innerHTML = '<p class="sidebar-empty">No conversations yet.</p>';
+  ConvHistory.newConversation();
+  showWelcome();
+
+  try {
+    const res = await authFetch(
+      `${API_BASE}/conversations/`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    if(!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch(err) {
+    console.error(
+      "Clear conversations error:",
+      err
+    );
+    fetchConversations();
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Clear";
+    }
   }
 }
 
@@ -175,6 +215,8 @@ document.getElementById('newChatBtn').addEventListener('click', () => {
 
   showWelcome();
 });
+
+document.getElementById('clearConversationsBtn').addEventListener('click', clearConversations);
 
 // ── Bookmarks ─────────────────────────────────────────────────
 async function fetchBookmarks() {
