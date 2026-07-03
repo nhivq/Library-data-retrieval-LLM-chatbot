@@ -253,6 +253,13 @@ function renderBookmarks(bookmarks) {
     const item = document.createElement('div');
     item.className = 'bookmark-item';
 
+    const link = document.createElement('a');
+    link.className = 'bookmark-link';
+    link.href = normalizeBookmarkWorkUrl(bm.work_key || '');
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.title = bm.title || 'Open book on OpenLibrary';
+
     const cover = document.createElement('div');
     cover.className = 'bookmark-cover';
 
@@ -279,11 +286,26 @@ function renderBookmarks(bookmarks) {
     removeButton.textContent = 'Remove';
     removeButton.addEventListener('click', () => removeBookmark(bm));
 
-    item.appendChild(cover);
-    item.appendChild(title);
+    link.appendChild(cover);
+    link.appendChild(title);
+    item.appendChild(link);
     item.appendChild(removeButton);
     list.appendChild(item);
   });
+}
+
+function normalizeBookmarkWorkUrl(value) {
+  const match = String(value).match(/\/works\/OL\d+[A-Z]\b|\bOL\d+[A-Z]\b/i);
+
+  if (!match) {
+    return 'https://openlibrary.org';
+  }
+
+  const workKey = match[0].startsWith('/works/')
+    ? match[0]
+    : `/works/${match[0]}`;
+
+  return `https://openlibrary.org${workKey}`;
 }
 
 function buildBookmarkFallback(bookmark) {
