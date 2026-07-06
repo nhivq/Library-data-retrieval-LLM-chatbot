@@ -5,7 +5,7 @@ from fastapi import (
     Depends
 )
 from app.database.connection import get_db
-from app.schemas.book_schemas import BookResponse, SimilarBookResponse, RecommendationBookResponse
+from app.schemas.book_schemas import BookResponse, SimilarBookResponse, RecommendationBookResponse, SemanticBookResponse
 from app.services import book_service
 
 router=APIRouter(
@@ -113,6 +113,34 @@ def recommend_books(
         raise HTTPException(
             status_code=400,
             detail="Could not recommend books"
+        )
+
+
+# ---------- Semantic Search Books ----------
+# Path allows:
+# /books/semantic-search?query=friendship after war
+@router.get(
+    "/semantic-search",
+    response_model=list[SemanticBookResponse]
+)
+def semantic_search_books(
+        query: str,
+        limit: int = 10,
+        conn=Depends(get_db)
+):
+    try:
+
+        return book_service.semantic_search_books(
+            query=query,
+            limit=limit,
+            conn=conn
+        )
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Could not search books semantically"
         )
 
 

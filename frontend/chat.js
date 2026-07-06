@@ -97,14 +97,15 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
     let buffer = '';
     let answer = '';
     let progress = [];
+    let finalRendered = false;
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        stopTimer();
-        if (answer || progress.length > 0) {
-          replaceWithAnswer(thinkingRow, answer, progress);
+        if (!finalRendered && (answer || progress.length > 0)) {
+          await replaceWithAnswer(thinkingRow, answer, progress);
         }
+        stopTimer();
         console.log("stream finished");
         break;
       }
@@ -133,15 +134,19 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
           }
 
           if (data.type === 'delta') {
-            stopTimer();
             answer += data.delta;
-            replaceWithAnswer(thinkingRow, answer, progress);
+            stopTimer();
+            renderStreamingAnswer(thinkingRow, answer, progress);
           }
 
           if (data.type === 'complete') {
-            stopTimer();
             if (data.progress) progress = data.progress;
-            replaceWithAnswer(thinkingRow, answer, progress);
+            updateThinkingProgress(thinkingRow, [{
+              summary: 'Formatting book cards',
+            }]);
+            await replaceWithAnswer(thinkingRow, answer, progress);
+            stopTimer();
+            finalRendered = true;
             ConvHistory.addMessage(text, answer);
           }
         } catch (e) {
@@ -183,20 +188,37 @@ function updateThinkingProgress(row, progress) {
   }
 }
 
-// ── Replace thinking bubble with answer + activity panel ─────
-function replaceWithAnswer(row, answer, steps) {
+function renderStreamingAnswer(row, answer, steps) {
   row.classList.remove('thinking');
   const bubble = row.querySelector('.msg-bubble');
 
-  // 1. Answer text (markdown)
   const answerDiv = document.createElement('div');
   answerDiv.className = 'markdown';
   answerDiv.innerHTML = renderMarkdown(answer);
+
   bubble.innerHTML = '';
   bubble.appendChild(answerDiv);
-  enhanceBookLinks(answerDiv);
 
-  // 2. Agent activity panel (only if there are steps)
+  if (steps.length > 0) {
+    bubble.appendChild(buildActivityPanel(steps));
+  }
+
+  scrollToBottom();
+}
+
+// ── Replace thinking bubble with answer + activity panel ─────
+async function replaceWithAnswer(row, answer, steps) {
+  const answerDiv = document.createElement('div');
+  answerDiv.className = 'markdown';
+  answerDiv.innerHTML = renderMarkdown(answer);
+  await enhanceBookLinks(answerDiv);
+
+  row.classList.remove('thinking');
+  const bubble = row.querySelector('.msg-bubble');
+
+  bubble.innerHTML = '';
+  bubble.appendChild(answerDiv);
+
   if (steps.length > 0) {
     bubble.appendChild(buildActivityPanel(steps));
   }
@@ -453,7 +475,7 @@ function getCoverUrl(coverId) {
   return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
 }
 
-function enhanceBookLinks(container) {
+async function enhanceBookLinks(container) {
   const anchors = [...container.querySelectorAll('a[href*="openlibrary.org/works/"]')];
   const seen = new Set();
   const tasks = [];
@@ -470,19 +492,18 @@ function enhanceBookLinks(container) {
     tasks.push(
       fetchBookDetails(workKey)
         .then((book) => {
-          if (!book || !container.isConnected) {
+          if (!book) {
             return;
           }
 
           const card = buildBookResultCard(book);
           const host = anchor.closest('li, p') || anchor;
 
-          if (!host.isConnected || (host.querySelector && host.querySelector('.book-result-card'))) {
+          if (host.querySelector && host.querySelector('.book-result-card')) {
             return;
           }
 
           replaceBookResult(host, card);
-          scrollToBottom();
         })
         .catch((error) => {
           console.log('Could not load book cover:', workKey, error);
@@ -491,7 +512,8 @@ function enhanceBookLinks(container) {
   }
 
   if (tasks.length) {
-    Promise.allSettled(tasks).then(scrollToBottom);
+    await Promise.allSettled(tasks);
+    scrollToBottom();
   }
 }
 

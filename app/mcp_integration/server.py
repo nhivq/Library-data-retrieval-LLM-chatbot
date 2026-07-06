@@ -99,6 +99,36 @@ def recommend_books(
 
 
 @mcp.tool(
+    description="""
+Semantic vector search over book embeddings.
+
+Use this for conceptual or natural-language queries where exact words may not
+appear in the database, such as "books about friendship after war".
+Returns books ranked by embedding similarity.
+"""
+)
+def semantic_search_books(
+    query: str,
+    limit: int = 10
+):
+
+    db = get_db()
+    conn = next(db)
+
+    try:
+
+        return book_service.semantic_search_books(
+            query=query,
+            limit=limit,
+            conn=conn
+        )
+
+    finally:
+
+        db.close()
+
+
+@mcp.tool(
     description="Get one book by its exact work_key."
 )
 def get_book(

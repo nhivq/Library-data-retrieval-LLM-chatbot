@@ -2,6 +2,8 @@ import re
 
 from psycopg2.extras import Json, RealDictCursor # By default, psycopg2 returns tuples
 
+from app.semantic.embeddings import embed_text, format_vector
+
 
 RECOMMENDATION_STOP_WORDS = {
     "a",
@@ -71,6 +73,23 @@ def build_recommendation_groups(
         )
 
     return prepared_groups
+
+
+def build_book_embedding_text(book: dict) -> str:
+    parts = [
+        book.get("title"),
+        book.get("description"),
+        ", ".join(book.get("authors") or []),
+        ", ".join(book.get("tags") or []),
+        ", ".join(book.get("languages") or []),
+        ", ".join(book.get("publishers") or []),
+    ]
+
+    return "\n".join(
+        part
+        for part in parts
+        if part
+    )
 
 # display first n books
 def get_books(
@@ -433,6 +452,78 @@ def recommend_books(
             (
                 Json(prepared_groups),
                 concept_count,
+                limit
+            )
+        )
+
+        return cursor.fetchall()
+
+    finally:
+
+        cursor.close()
+
+
+def semantic_search_books(
+        query: str,
+        limit: int = 10,
+        conn=None
+):
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+
+        if limit < 1:
+            limit = 10
+
+        if limit > 20:
+            limit = 20
+
+        query_embedding = format_vector(
+            embed_text(query)
+        )
+
+        sql = """
+              SELECT b.work_key,
+                     b.title,
+                     b.tags,
+                     b.publish_date,
+                     b.rating,
+                     b.cover_id,
+                     COALESCE(
+                         ARRAY_AGG(a.author_name)
+                         FILTER (WHERE a.author_name IS NOT NULL),
+                         ARRAY[]::text[]
+                     ) AS authors,
+                     1 - (b.embedding <=> %s::vector) AS semantic_score
+
+              FROM books b
+
+                       LEFT JOIN book_authors ba
+                             ON b.work_key = ba.work_key
+
+                       LEFT JOIN authors a
+                             ON ba.author_key = a.author_key
+
+              WHERE b.embedding IS NOT NULL
+
+              GROUP BY b.work_key,
+                       b.title,
+                       b.tags,
+                       b.publish_date,
+                       b.rating,
+                       b.cover_id,
+                       b.embedding
+
+              ORDER BY b.embedding <=> %s::vector
+
+              LIMIT %s
+              """
+
+        cursor.execute(
+            sql,
+            (
+                query_embedding,
+                query_embedding,
                 limit
             )
         )

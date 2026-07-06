@@ -36,3 +36,14 @@ class RecommendationBookResponse(BaseModel):
     matched_concept_count: int
     concept_count: int
     recommendation_score: float
+
+
+class SemanticBookResponse(BaseModel):
+    work_key: str
+    title: str
+    tags: list[str] | None = None
+    publish_date: date | None = None
+    rating: float | None = None
+    cover_id: int | None = None
+    authors: list[str] = []
+    semantic_score: float
