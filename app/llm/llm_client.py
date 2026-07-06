@@ -65,6 +65,19 @@ async def get_openrouter_tools():
     return openrouter_tools_cache
 
 
+def build_plan_payload(
+        steps: list[dict],
+        active_key: str | None = None
+):
+    return json.dumps(
+        {
+            "type": "plan",
+            "steps": steps,
+            "active": active_key
+        }
+    )
+
+
 # ---------- Agent ----------
 async def ask_agent_stream(
     question: str,
@@ -72,7 +85,35 @@ async def ask_agent_stream(
     user_id: int
 ):
     print("\n===== Stream START")
-    yield 'data: {"type":"progress","message":"Starting"}\n\n'
+    plan_steps = [
+        {
+            "key": "understand",
+            "label": "Understand question",
+            "status": "running"
+        },
+        {
+            "key": "select_tool",
+            "label": "Select tool",
+            "status": "pending"
+        },
+        {
+            "key": "run_tool",
+            "label": "Search library data",
+            "status": "pending"
+        },
+        {
+            "key": "compare",
+            "label": "Compare results",
+            "status": "pending"
+        },
+        {
+            "key": "respond",
+            "label": "Generate response",
+            "status": "pending"
+        }
+    ]
+
+    yield f"data: {build_plan_payload(plan_steps, 'understand')}\n\n"
     async with client:
         progress = []
         step_number = 1
@@ -129,6 +170,9 @@ async def ask_agent_stream(
                 iteration += 1
                 if iteration > MAX_ITERATIONS:
                     break
+                plan_steps[0]["status"] = "completed"
+                plan_steps[1]["status"] = "running"
+                yield f"data: {build_plan_payload(plan_steps, 'select_tool')}\n\n"
                 response = call_llm(
                     messages=messages,
                     tools=openrouter_tools,
@@ -147,6 +191,19 @@ async def ask_agent_stream(
                     # CASE 1: normal text response
                     # ----------------------------
                     if delta.content:
+                        plan_steps[1]["status"] = "completed"
+                        plan_steps[2]["status"] = (
+                            "completed"
+                            if progress
+                            else "skipped"
+                        )
+                        plan_steps[3]["status"] = (
+                            "completed"
+                            if progress
+                            else "skipped"
+                        )
+                        plan_steps[4]["status"] = "running"
+                        yield f"data: {build_plan_payload(plan_steps, 'respond')}\n\n"
                         assistant_text += delta.content
                         payload = json.dumps(
                             {
@@ -160,8 +217,9 @@ async def ask_agent_stream(
                     # ----------------------------
                     if delta.tool_calls:
                         print("stream tool_calls chunk received:", iteration)
-                        # Emit progress to let the frontend know a tool execution has started.
-                        yield 'data: {"type":"progress","message":"Using tool"}\n\n'
+                        plan_steps[1]["status"] = "completed"
+                        plan_steps[2]["status"] = "running"
+                        yield f"data: {build_plan_payload(plan_steps, 'run_tool')}\n\n"
                         for tc in delta.tool_calls:
                             idx = tc.index
                             if idx not in tool_calls_accumulator:
@@ -263,6 +321,9 @@ async def ask_agent_stream(
                         if tool_name == "delete_all_conversations":
                             deleted_all_conversations = True
                         step_number += 1
+                        plan_steps[2]["status"] = "completed"
+                        plan_steps[3]["status"] = "running"
+                        yield f"data: {build_plan_payload(plan_steps, 'compare')}\n\n"
                         # Append assistant tool call reference and tool response to history.
                         messages.append(
                             {
@@ -296,12 +357,15 @@ async def ask_agent_stream(
                                 "content": f"Tool {tool_name} failed with error:\n{str(e)}"
                             }
                         )
+                plan_steps[3]["status"] = "completed"
             payload = json.dumps(
                 {
                     "type": "complete",
                     "progress": progress
                 }
             )
+            plan_steps[4]["status"] = "completed"
+            yield f"data: {build_plan_payload(plan_steps, None)}\n\n"
             yield f"data: {payload}\n\n"
             # If the user asked to delete all history, do not recreate
             # a new conversation by saving the final confirmation message.

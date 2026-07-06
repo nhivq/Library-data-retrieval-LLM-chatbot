@@ -615,6 +615,74 @@ html, body {
   margin-left: 8px;
 }
 
+/* ── Tool Planning Checklist ──────────────────────────────── */
+.planning-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.planning-title {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.planning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planning-step {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.planning-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.planning-step.completed {
+  color: var(--accent-dim);
+}
+
+.planning-step.completed .planning-icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.planning-step.running {
+  color: var(--text);
+}
+
+.planning-step.running .planning-icon {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.planning-step.pending,
+.planning-step.skipped {
+  opacity: .72;
+}
+
 /* ── Agent Activity Panel ─────────────────────────────────── */
 .activity-panel {
   margin-top: 14px;
