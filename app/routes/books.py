@@ -136,6 +136,13 @@ def semantic_search_books(
             conn=conn
         )
 
+    except RuntimeError as e:
+
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
+
     except Exception:
 
         raise HTTPException(

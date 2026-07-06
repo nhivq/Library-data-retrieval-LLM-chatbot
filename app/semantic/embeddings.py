@@ -1,7 +1,5 @@
 import os
 
-from sentence_transformers import SentenceTransformer
-
 
 EMBEDDING_MODEL_NAME = os.getenv(
     "EMBEDDING_MODEL_NAME",
@@ -15,9 +13,26 @@ def get_embedding_model():
     global _embedding_model
 
     if _embedding_model is None:
-        _embedding_model = SentenceTransformer(
-            EMBEDDING_MODEL_NAME
-        )
+        # Import this only when semantic search is actually used.
+        # Loading sentence-transformers at app startup can delay Render
+        # long enough that no web port is detected.
+        try:
+            from sentence_transformers import SentenceTransformer
+
+        except Exception as e:
+            raise RuntimeError(
+                "Semantic search dependencies are not available"
+            ) from e
+
+        try:
+            _embedding_model = SentenceTransformer(
+                EMBEDDING_MODEL_NAME
+            )
+
+        except Exception as e:
+            raise RuntimeError(
+                "Semantic embedding model could not be loaded"
+            ) from e
 
     return _embedding_model
 
