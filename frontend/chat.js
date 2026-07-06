@@ -97,7 +97,6 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
     let buffer = '';
     let answer = '';
     let progress = [];
-    let planSteps = [];
     let finalRendered = false;
 
     while (true) {
@@ -132,11 +131,6 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
               status: 'running',
             }];
             updateThinkingProgress(thinkingRow, progress);
-          }
-
-          if (data.type === 'plan') {
-            planSteps = data.steps || [];
-            updatePlanningVisualization(thinkingRow, planSteps);
           }
 
           if (data.type === 'delta') {
@@ -177,10 +171,6 @@ function startLiveTimer(row) {
   const start   = Date.now();
 
   const interval = setInterval(() => {
-    if (row.dataset.planning === 'true') {
-      return;
-    }
-
     const s = ((Date.now() - start) / 1000).toFixed(1);
     const progText = row.dataset.progress ? ` (${row.dataset.progress})` : '';
     bubble.innerHTML =
@@ -196,37 +186,6 @@ function updateThinkingProgress(row, progress) {
   if (progress && progress[0]) {
     row.dataset.progress = progress[0].summary;
   }
-}
-
-function updatePlanningVisualization(row, steps) {
-  if (!row.classList.contains('thinking')) return;
-
-  row.dataset.planning = 'true';
-
-  const bubble = row.querySelector('.msg-bubble');
-
-  bubble.innerHTML =
-    `<div class="planning-card">` +
-      `<div class="planning-title">Planning</div>` +
-      `<div class="planning-list">` +
-        steps.map(buildPlanningStep).join('') +
-      `</div>` +
-    `</div>`;
-}
-
-function buildPlanningStep(step) {
-  const status = step.status || 'pending';
-  const icon = status === 'completed' ? '✓'
-             : status === 'running'   ? '⟳'
-             : status === 'skipped'   ? '–'
-             : '○';
-
-  return (
-    `<div class="planning-step ${escapeHtml(status)}">` +
-      `<span class="planning-icon">${icon}</span>` +
-      `<span class="planning-label">${escapeHtml(step.label || '')}</span>` +
-    `</div>`
-  );
 }
 
 function renderStreamingAnswer(row, answer, steps) {
