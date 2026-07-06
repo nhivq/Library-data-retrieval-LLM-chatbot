@@ -308,10 +308,49 @@ For local development, update `API_BASE` in `frontend/auth.js` if needed.
 
 ## Deployment Notes
 
-Backend on Render:
+This project is deployed as three separate pieces:
+
+- Frontend: Vercel
+- Backend API: Render
+- PostgreSQL database: Neon
+
+### Neon PostgreSQL
+
+Create a Neon PostgreSQL project and copy the pooled or direct connection string.
+
+Use it as the backend `DATABASE_URL`:
+
+```env
+DATABASE_URL=postgresql://...
+```
+
+Apply the schema and migrations against the Neon database:
+
+```bash
+psql "$DATABASE_URL" -f app/database/schema.sql
+psql "$DATABASE_URL" -f scripts/migrations/add_user_roles_and_oauth_columns.sql
+psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
+```
+
+If semantic search is enabled, run the embedding backfill against Neon:
+
+```bash
+python scripts/updating/backfill_book_embeddings.py
+```
+
+### Render Backend
+
+The FastAPI backend runs on Render.
+
+Build command:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Start command:
+
+```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
@@ -326,6 +365,40 @@ FRONTEND_URL
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI
+```
+
+`DATABASE_URL` should point to the Neon PostgreSQL database.
+
+`FRONTEND_URL` should point to the Vercel frontend URL, for example:
+
+```text
+https://library-data-retrieval-llm-chatbot.vercel.app
+```
+
+`GOOGLE_REDIRECT_URI` should point to the Render backend callback URL:
+
+```text
+https://your-render-service.onrender.com/auth/google/callback
+```
+
+Render must bind to `$PORT`; the configured start command above does this.
+
+### Vercel Frontend
+
+The frontend is deployed as a static site on Vercel from the `frontend/` directory.
+
+The frontend calls the backend through `API_BASE` in `frontend/auth.js`.
+
+For production, `API_BASE` should point to the Render backend URL:
+
+```js
+const API_BASE = "https://your-render-service.onrender.com";
+```
+
+The Render backend CORS settings in `app/main.py` must allow the Vercel origin:
+
+```text
+https://library-data-retrieval-llm-chatbot.vercel.app
 ```
 
 After changing MCP tools, prompts, or dependencies, restart/redeploy the backend so the LLM sees the new tool schema.
