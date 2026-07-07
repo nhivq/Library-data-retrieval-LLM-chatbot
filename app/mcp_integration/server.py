@@ -5,7 +5,9 @@ from app.schemas.user_schemas import LoginRequest, RegisterRequest
 from app.services import author_service, book_service, bookmark_service, auth_service, conversation_service
 
 
-# Create and name MCP server
+# FastMCP exposes selected service functions as tools the LLM agent can call.
+# Tool descriptions become model-facing instructions, so they should explain
+# both when to use each tool and how to format important arguments.
 mcp = FastMCP("Book Retrieval MCP")
 
 
@@ -23,7 +25,7 @@ Returns matching books from the database.
 """
 )
 def search_books(
-q: str | None = None,
+        q: str | None = None,
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
@@ -33,7 +35,10 @@ q: str | None = None,
         page:int=1,
         limit:int=10,
 ):
+    """MCP wrapper around strict book metadata search."""
 
+    # get_db is a FastAPI generator dependency. Outside FastAPI, call next()
+    # to get the connection and close the generator in finally.
     db = get_db()
     conn = next(db)
 
@@ -80,6 +85,7 @@ def recommend_books(
     concept_groups: list[str] | None = None,
     limit: int = 10
 ):
+    """MCP wrapper around concept-group recommendations."""
 
     db = get_db()
     conn = next(db)
@@ -111,6 +117,7 @@ def semantic_search_books(
     query: str,
     limit: int = 10
 ):
+    """MCP wrapper around pure semantic book search."""
 
     db = get_db()
     conn = next(db)
@@ -143,6 +150,8 @@ def hybrid_search_books(
     keyword_weight: float = 0.4,
     semantic_weight: float = 0.6
 ):
+    """MCP wrapper around hybrid keyword/vector search."""
+
     db = get_db()
     conn = next(db)
 
@@ -165,6 +174,7 @@ def hybrid_search_books(
 def get_book(
     work_key: str
 ):
+    """MCP wrapper for fetching a single book by work key."""
     
     db = get_db()
     conn = next(db)
@@ -191,6 +201,7 @@ Returns ranked books using tag overlap, rating closeness, and shared authors.
 def similar_books(
     work_key: str
 ):
+    """MCP wrapper for metadata-based similar books."""
     
     db = get_db()
     conn = next(db)
@@ -215,6 +226,7 @@ def similar_books(
 def get_author(
     author_key: str
 ):
+    """MCP wrapper for fetching one author."""
     
     db = get_db()
     conn = next(db)
@@ -256,6 +268,7 @@ def search_authors(
         author_ends_with: str | None = None,
         author_key: str | None = None
 ):
+    """MCP wrapper for flexible author search."""
     
     db = get_db()
     conn = next(db)
@@ -298,6 +311,7 @@ def save_bookmarks(
     bookmark: Bookmark,
     user_id: int
 ):
+    """Save a bookmark on behalf of the authenticated chat user."""
     
     db = get_db()
     conn = next(db)
@@ -321,6 +335,7 @@ def save_bookmarks(
 def get_bookmarks(
     user_id: int
 ):
+    """Return bookmarks for the authenticated chat user."""
     
     db = get_db()
     conn = next(db)
@@ -344,6 +359,7 @@ def delete_bookmarks(
     work_key: str,
     user_id: int
 ):
+    """Delete one bookmark for the authenticated chat user."""
     
     db = get_db()
     conn = next(db)
@@ -369,6 +385,7 @@ def delete_bookmarks(
 def delete_all_conversations(
     user_id: int
 ):
+    """Delete all conversations for the authenticated chat user."""
 
     db = get_db()
     conn = next(db)
@@ -398,6 +415,7 @@ def delete_all_conversations(
 def register(
     user: RegisterRequest
 ):
+    """Register a username/password account through MCP."""
     
     db = get_db()
     conn = next(db)
@@ -422,6 +440,7 @@ def register(
 def login(
     user: LoginRequest
 ):
+    """Authenticate through MCP and return JWTs."""
     
     db = get_db()
     conn = next(db)

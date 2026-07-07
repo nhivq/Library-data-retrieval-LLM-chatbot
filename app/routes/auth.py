@@ -23,7 +23,8 @@ router=APIRouter(
 )
 
 
-# ---------- OAuth Object ----------
+# Authlib OAuth registry. Google uses OpenID Connect metadata so Authlib can
+# discover authorization, token, and userinfo endpoints.
 oauth = OAuth()
 
 
@@ -40,6 +41,7 @@ oauth.register(
 def get_me(
     user=Depends(get_current_user)
 ):
+    """Return the user resolved from the current bearer token."""
 
     return user
 
@@ -48,6 +50,7 @@ def get_me(
 def refresh_token(
     payload: RefreshRequest
 ):
+    """Exchange a valid refresh token for a new access token."""
     
     try:
 
@@ -72,12 +75,13 @@ def refresh_token(
         )
 
 
-# ---------- Register account ----------
 @router.post("/register")
 def register(
         user: RegisterRequest,
         conn=Depends(get_db)
 ):
+    """Create a new username/password account."""
+
     try:
 
         return auth_service.register_user(
@@ -94,12 +98,13 @@ def register(
         )
 
 
-# ---------- User Login ----------
 @router.post("/login")
 def login(
         user: LoginRequest,
         conn=Depends(get_db)
 ):
+    """Authenticate username/password credentials."""
+
     try:
 
         return auth_service.login_user(
@@ -120,11 +125,11 @@ def login(
         )
 
 
-# ---------- OAuth Login----------
 @router.get("/google")
 async def google_login(
     request: Request
 ):
+    """Start the Google OAuth redirect flow."""
     
     redirect_uri = GOOGLE_REDIRECT_URI
 
@@ -134,12 +139,12 @@ async def google_login(
     )
 
 
-# ---------- OAuth Callback----------
 @router.get("/google/callback")
 async def google_callback(
     request: Request,
     conn=Depends(get_db)
 ):
+    """Handle Google's OAuth callback and redirect the frontend with tokens."""
     
     print("SESSION:", request.session)
     print("STATE:", request.query_params.get("state"))
@@ -168,8 +173,6 @@ async def google_callback(
     print("LOCAL USER:")
     print(user)
 
-    # create/find user here
-
     access_token = create_access_token(
         {
             "sub": str(user["user_id"])
@@ -182,9 +185,11 @@ async def google_callback(
         }
     )
 
+    # The frontend success page receives the tokens after Google redirects
+    # back to the backend and the backend verifies the Google profile.
     return RedirectResponse(
-    url=
-    f"{FRONTEND_URL}/oauth_success.html"
-    f"?access={access_token}"
-    f"&refresh={refresh_token}"
+        url=
+        f"{FRONTEND_URL}/oauth_success.html"
+        f"?access={access_token}"
+        f"&refresh={refresh_token}"
     )

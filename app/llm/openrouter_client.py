@@ -8,6 +8,8 @@ def call_llm(
         tools=None,
         stream=False
 ):
+    """Call OpenRouter through the OpenAI-compatible client."""
+
     response = llm.chat.completions.create(
         model=MODEL,
         messages=messages,

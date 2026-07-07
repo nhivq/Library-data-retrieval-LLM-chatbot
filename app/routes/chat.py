@@ -11,11 +11,11 @@ router = APIRouter(
 
 
 @router.post("/chat")
-# using async because ask_agent() is already async def ask_agent(...)
 async def chat(
     request: ChatRequest,
     user=Depends(get_current_user)
 ):
+    """Stream the assistant response for one authenticated chat message."""
 
     return StreamingResponse(
         ask_agent_stream(

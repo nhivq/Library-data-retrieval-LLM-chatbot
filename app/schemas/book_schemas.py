@@ -1,9 +1,9 @@
-from pydantic import BaseModel
 from datetime import date
+from pydantic import BaseModel
 
-# ---------- Response Models ( how API sends data ) ----------
-class BookResponse(BaseModel): # Inherit baseModel from pydantic for automatic validation and serialization
-                            # This checks whether returned data matches expected types and converts Python object -> JSON
+
+class BookResponse(BaseModel):
+    """Base book shape returned by normal list/detail endpoints."""
 
     work_key: str
     title: str
@@ -15,6 +15,8 @@ class BookResponse(BaseModel): # Inherit baseModel from pydantic for automatic v
 
 
 class SimilarBookResponse(BaseModel):
+    """Book response plus metadata similarity score."""
+
     work_key: str
     title: str
     tags: list[str] | None = None
@@ -26,6 +28,8 @@ class SimilarBookResponse(BaseModel):
 
 
 class RecommendationBookResponse(BaseModel):
+    """Book response plus recommendation group scoring fields."""
+
     work_key: str
     title: str
     tags: list[str] | None = None
@@ -39,6 +43,8 @@ class RecommendationBookResponse(BaseModel):
 
 
 class SemanticBookResponse(BaseModel):
+    """Book response plus pgvector semantic similarity score."""
+
     work_key: str
     title: str
     tags: list[str] | None = None
@@ -50,6 +56,8 @@ class SemanticBookResponse(BaseModel):
 
 
 class HybridBookResponse(BaseModel):
+    """Book response plus keyword, semantic, and combined ranking scores."""
+
     work_key: str
     title: str
     tags: list[str] | None = None

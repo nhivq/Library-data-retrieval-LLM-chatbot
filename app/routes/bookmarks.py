@@ -13,13 +13,14 @@ router=APIRouter(
     tags=["Bookmarks"]
 )
 
-# ---------- Save Bookmark ----------
 @router.post("/")
 def save_bookmark(
         bookmark: Bookmark,
         user=Depends(get_current_user),
         conn=Depends(get_db)
 ):
+    """Save a bookmark for the authenticated user."""
+
     try:
 
         return bookmark_service.save_bookmark(
@@ -28,7 +29,7 @@ def save_bookmark(
             conn=conn
         )
 
-    except Exception:  # Undo changes if error happens
+    except Exception:
 
         raise HTTPException(
             status_code=400,
@@ -36,14 +37,13 @@ def save_bookmark(
         )
 
 
-# ---------- Get Bookmarks ----------
-# Path allows:
-# /bookmarks?user_id=1
 @router.get("/")
 def get_bookmark(
         user=Depends(get_current_user),
         conn=Depends(get_db)
 ):
+    """Return bookmarks for the authenticated user only."""
+
     try:
 
         return bookmark_service.get_bookmark(
@@ -60,14 +60,16 @@ def get_bookmark(
         )
 
 
-# ---------- Delete Bookmarks ----------
 @router.delete("/{work_key:path}")
 def delete_bookmark(
         work_key: str,
         user=Depends(get_current_user),
         conn=Depends(get_db)
 ):
-    cursor = conn.cursor()
+    """Delete one bookmark for the authenticated user.
+
+    work_key uses the path converter because OpenLibrary keys contain slashes.
+    """
 
     try:
 
@@ -77,7 +79,7 @@ def delete_bookmark(
             conn=conn
         )
 
-    except Exception:  # Undo changes if error happens
+    except Exception:
 
         raise HTTPException(
             status_code=400,

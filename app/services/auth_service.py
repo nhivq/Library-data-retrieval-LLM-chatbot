@@ -2,8 +2,9 @@ import bcrypt
 from psycopg2.extras import RealDictCursor
 from app.core.security import create_access_token, create_refresh_token
 
-# Helper function
+
 def hash_password(password: str):
+    """Hash a plain password before it is stored in the database."""
 
     return bcrypt.hashpw(
         password.encode("utf-8"),
@@ -11,11 +12,11 @@ def hash_password(password: str):
     ).decode("utf-8")
 
 
-# Helper function
 def verify_password(
         plain_password: str,
         hashed_password: str
 ):
+    """Compare a login password against the stored bcrypt hash."""
 
     return bcrypt.checkpw(
         plain_password.encode("utf-8"),
@@ -29,6 +30,8 @@ def register_user(
         password: str,
         conn=None
 ):
+    """Create a normal username/password user with the default user role."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -40,6 +43,8 @@ def register_user(
         VALUES(%s,%s,%s,%s)
         """
 
+        # Store only the bcrypt hash. The original password should never be
+        # persisted or returned by the API.
         hashed_password = hash_password(
             password
         )
@@ -76,6 +81,8 @@ def login_user(
         password: str,
         conn=None
 ):
+    """Validate user credentials and issue access and refresh JWTs."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:

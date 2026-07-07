@@ -15,7 +15,6 @@ router = APIRouter(
 )
 
 
-# ---------- View a session's conversations ----------
 @router.get("/{session_id}")
 def get_conversation(
     session_id: str,
@@ -24,6 +23,8 @@ def get_conversation(
     """
     Get the conversation history for a given session ID.
     """
+    # This route uses a manual connection because these service helpers are
+    # also called from the LLM/MCP flow outside normal FastAPI dependency use.
     conn = get_connection()
 
     try:
@@ -37,11 +38,11 @@ def get_conversation(
         conn.close()
 
 
-# ---------- View all sessions' conversations ----------
 @router.get("/")
 def get_conversations(
     user=Depends(get_current_user)
 ):
+    """Return the current user's conversation sessions."""
 
     conn = get_connection()
 
@@ -55,11 +56,11 @@ def get_conversations(
         conn.close()
 
 
-# ---------- Clear all conversations ----------
 @router.delete("/")
 def delete_conversations(
     user=Depends(get_current_user)
 ):
+    """Delete every conversation owned by the authenticated user."""
 
     conn = get_connection()
 
@@ -79,7 +80,6 @@ def delete_conversations(
         conn.close()
 
 
-# ---------- Clear a session's conversations ----------
 @router.delete("/{session_id}")
 def delete_chat(
     session_id: str, 

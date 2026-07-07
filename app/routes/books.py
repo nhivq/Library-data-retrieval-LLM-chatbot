@@ -13,21 +13,21 @@ router=APIRouter(
     tags=["Books"]
 )
 
-# ---------- Get Books ----------
-# Path allows:
-# /books
-# /books?limit=20
 @router.get(
     "/",
     response_model=list[BookResponse]
 )
 def get_books(
-        limit: int = Query( # Query() allows additional validation and metadata
+        # Query validates the request before the service layer runs.
+        limit: int = Query(
             default=10,
-            le=100  # limit <= 100
+            le=100
         ),
-        conn=Depends(get_db) # avoid repeating db connection code in every endpoint -> easier to maintain
+        # get_db owns connection cleanup for this request.
+        conn=Depends(get_db)
 ):
+    """Return a small list of books for browsing."""
+
     try:
 
         return book_service.get_books(
@@ -43,12 +43,9 @@ def get_books(
         )
 
 
-# ---------- Search Books ----------
-# Path allows:
-# /books/search?q=history
 @router.get(
     "/search",
-    response_model=list[BookResponse] # dùng list vì /books returns multiple books
+    response_model=list[BookResponse]
 )
 def search_books(
         q: str | None = None,
@@ -62,6 +59,8 @@ def search_books(
         limit:int=10,
         conn=Depends(get_db)
 ):
+    """Strict metadata search for title, author, rating, tag, and year filters."""
+
     try:
 
         return book_service.search_books(
@@ -80,15 +79,12 @@ def search_books(
 
     except Exception as e:
 
-        raise HTTPException(  # Standardize API behaviour
-            status_code=400, # Return proper HTTP status codes & meaningful error messages
+        raise HTTPException(
+            status_code=400,
             detail="Could not search books"
         )
 
 
-# ---------- Recommend Books ----------
-# Path allows:
-# /books/recommendations?prompt=japanese history drama voice
 @router.get(
     "/recommendations",
     response_model=list[RecommendationBookResponse]
@@ -99,6 +95,8 @@ def recommend_books(
         limit: int = 10,
         conn=Depends(get_db)
 ):
+    """Recommendation endpoint for taste, mood, theme, or mixed requests."""
+
     try:
 
         return book_service.recommend_books(
@@ -116,9 +114,6 @@ def recommend_books(
         )
 
 
-# ---------- Semantic Search Books ----------
-# Path allows:
-# /books/semantic-search?query=friendship after war
 @router.get(
     "/semantic-search",
     response_model=list[SemanticBookResponse]
@@ -128,6 +123,8 @@ def semantic_search_books(
         limit: int = 10,
         conn=Depends(get_db)
 ):
+    """Pure vector search endpoint for conceptual queries."""
+
     try:
 
         return book_service.semantic_search_books(
@@ -151,9 +148,6 @@ def semantic_search_books(
         )
     
 
-# ---------- Hybrid Search Books ----------
-# Path allows:
-# /books/hybrid-search?query=friendship after war
 @router.get(
     "/hybrid-search",
     response_model=list[HybridBookResponse]
@@ -171,6 +165,8 @@ def hybrid_search_books(
         published_year: int | None = None,
         conn=Depends(get_db)
 ):
+    """Default discovery endpoint combining keyword and vector relevance."""
+
     try:
         return book_service.hybrid_search_books(
             query=query,
@@ -199,13 +195,11 @@ def hybrid_search_books(
         )
 
 
-# ---------- Get Specific Single Book ----------
-# Path allows:
-# /works/OL12345W (double // because work_key contains /)
 @router.get(
     "/{work_key:path}",
-    response_model=BookResponse # response_model validates API responses & ensures the returned data follows a structure
-)                               # If it is removed -> May return wrong fields/ unexpected data
+    # OpenLibrary work keys include slashes, so path captures the full key.
+    response_model=BookResponse
+)
 def get_book(
         work_key: str,
         conn=Depends(get_db)
@@ -237,9 +231,6 @@ def get_book(
         )
 
 
-# ---------- Find Similar Books ----------
-# Path allows:
-# /books/{work_key}/similar
 @router.get(
     "/{work_key:path}/similar",
     response_model=list[SimilarBookResponse]
@@ -248,6 +239,8 @@ def similar_books(
     work_key: str,
     conn=Depends(get_db)
 ):
+    """Return metadata-similar books for a given OpenLibrary work key."""
+
     
     try:
     

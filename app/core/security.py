@@ -4,6 +4,7 @@ from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPI
 
 
 def create_access_token(data:dict):
+    """Create a short-lived JWT for authenticated API requests."""
 
     to_encode = data.copy()
 
@@ -21,6 +22,7 @@ def create_access_token(data:dict):
 
 
 def create_refresh_token(data:dict):
+    """Create a longer-lived refresh token used to obtain new access tokens."""
 
     to_encode = data.copy()
 
@@ -30,6 +32,7 @@ def create_refresh_token(data:dict):
 
     to_encode["exp"] = expire
 
+    # Mark refresh tokens so an access token cannot be used at /auth/refresh.
     to_encode["type"] = "refresh"
 
 
@@ -41,6 +44,7 @@ def create_refresh_token(data:dict):
 
 
 def decode_access_token(token:str):
+    """Decode and validate an access token."""
 
     payload = jwt.decode(
         token,
@@ -52,6 +56,7 @@ def decode_access_token(token:str):
 
 
 def decode_refresh_token(token: str):
+    """Decode a refresh token and verify that it has the refresh marker."""
 
     payload = jwt.decode(
         token,

@@ -4,6 +4,8 @@ def get_author(
         author_key: str,
         conn = None
 ):
+    """Fetch one author and aggregate the titles connected to that author."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     try:
 
@@ -44,6 +46,8 @@ def search_authors(
         author_key: str | None = None,
         conn=None
 ):
+    """Search authors by flexible name/key filters."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -64,6 +68,7 @@ def search_authors(
                 WHERE 1 = 1
               """
 
+        # Build WHERE clauses only for filters the caller provided.
         params = []
 
         if author_starts_with:
@@ -108,6 +113,8 @@ def get_authors(
         limit: int = 10,
         conn=None
 ):
+    """Return a paginated author list with each author's books."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:

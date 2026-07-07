@@ -13,6 +13,7 @@ def get_current_user(
         credentials=Depends(security),
         conn=Depends(get_db)
 ):
+    """Resolve the authenticated user from the bearer access token."""
     
     token = credentials.credentials
 
@@ -20,6 +21,7 @@ def get_current_user(
 
         payload = decode_access_token(token)
 
+        # JWT subject values are strings by convention; convert before querying.
         user_id = int(str(payload["sub"]))
 
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -67,6 +69,7 @@ def get_current_user(
 def get_current_admin_user(
         user=Depends(get_current_user)
 ):
+    """Require the current authenticated user to have the admin role."""
 
     if user.get("role") != "admin":
         raise HTTPException(

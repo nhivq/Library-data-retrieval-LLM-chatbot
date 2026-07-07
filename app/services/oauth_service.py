@@ -1,8 +1,3 @@
-# This file will do:
-# 1. talk to Google
-# 2. get Google profile
-# 3. create/find user
-
 from psycopg2.extras import RealDictCursor
 
 
@@ -10,6 +5,13 @@ def get_or_create_google_user(
         google_user,
         conn
 ):
+    """Return a local user for a Google profile, creating/linking as needed.
+
+    Login priority:
+    1. Reuse a user already linked to this Google account.
+    2. Link an existing local account with the same email.
+    3. Create a new user row for first-time Google sign-in.
+    """
     
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -21,8 +23,8 @@ def get_or_create_google_user(
 
         username = google_user["name"]
 
-     # 1. Check existing OAuth user
-
+        # First try the stable Google subject id. Email addresses can change,
+        # but this id identifies the Google account.
         cursor.execute(
             """
             SELECT *
@@ -39,9 +41,8 @@ def get_or_create_google_user(
 
         if user:
             return user
-
-    # 2. Check email exists
-
+        # If a local account exists with the same email, link it instead of
+        # creating a duplicate user.
         cursor.execute(
             """
             SELECT *
@@ -55,8 +56,6 @@ def get_or_create_google_user(
         user = cursor.fetchone()
 
         if user:
-
-            # link existing account
 
             cursor.execute(
                 """
@@ -76,8 +75,8 @@ def get_or_create_google_user(
 
             return cursor.fetchone()
 
-        # 3. Create new user
-
+        # Otherwise create a new OAuth-only user. The password field has a
+        # database default because Google users do not log in with a password.
         cursor.execute(
             """
             INSERT INTO users

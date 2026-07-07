@@ -1,13 +1,13 @@
 
-# ---------- Local Testing ----------
-
-
+# Default input used only when running the LLM client manually from terminal.
 DEFAULT_QUESTION = (
     "Delete all bookmarks of user 4. Then, save bookmark /works/OL10000112W "
     "for user 4 and then show all user 4's bookmarks"
 )
 
 
+# This prompt is injected at the start of every conversation so the model knows
+# to rely on database tools instead of inventing book data.
 SYSTEM_PROMPT = (
     "You are a helpful book assistant with access to the app's real book data. "
     "For any question about books, authors, ratings, tags, publication dates, bookmarks, or search results, use the available tools instead of answering from your own knowledge. "

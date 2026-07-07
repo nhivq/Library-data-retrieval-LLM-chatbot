@@ -5,6 +5,12 @@ def save_bookmark(
         work_key: str,
         conn=None
 ):
+    """Save a book for a user.
+
+    The bookmarks table uses (user_id, work_key) as a primary key, so duplicate
+    saves are rejected by the database.
+    """
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -18,7 +24,8 @@ def save_bookmark(
 
         cursor.execute(query, (user_id, work_key))
 
-        conn.commit()  # Prevent changes disappeared
+        # Commit is required because this service owns the write transaction.
+        conn.commit()
 
         return {"message": "Bookmark saved"}
 
@@ -37,6 +44,8 @@ def get_bookmark(
         user_id: int,
         conn = None
 ):
+    """Return all books bookmarked by one authenticated user."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -71,6 +80,8 @@ def delete_bookmark(
         user_id: int,
         conn=None
 ):
+    """Delete one bookmark belonging to the authenticated user."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:

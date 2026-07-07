@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
-# ---------- Request Models ----------
+
 class Bookmark(BaseModel):
+    """Request body for saving a bookmark."""
 
     work_key: str

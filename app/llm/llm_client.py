@@ -2,7 +2,6 @@ import asyncio
 import json
 import time
 
-from dns import message
 from app.llm.tool_result_processor import process_tool_result
 from app.llm.setup import client
 from app.llm.tool_converter import mcp_tool_to_openrouter
@@ -13,6 +12,7 @@ from app.llm.openrouter_client import call_llm
 
 # ---------- Helper Functions ----------
 def summarize_tool_result(data):
+    """Build a short progress summary for a tool result."""
 
     if isinstance(data, list):
 
@@ -55,6 +55,8 @@ openrouter_tools_cache = None
 
 
 async def get_openrouter_tools():
+    """Load MCP tools once and convert them to OpenRouter tool schemas."""
+
     global openrouter_tools_cache
     if openrouter_tools_cache is None:
         mcp_tools = await client.list_tools()
@@ -71,6 +73,14 @@ async def ask_agent_stream(
     session_id: str,
     user_id: int
 ):
+    """Stream an agent answer as Server-Sent Events.
+
+    The agent loop alternates between model calls and MCP tool execution until
+    the model returns final text without tool calls, or the iteration cap is
+    reached. Each yielded line follows the SSE "data: ..." format expected by
+    the frontend.
+    """
+
     print("\n===== Stream START")
     yield 'data: {"type":"progress","message":"Starting"}\n\n'
     async with client:
@@ -90,6 +100,8 @@ async def ask_agent_stream(
             formatted_prompt = SYSTEM_PROMPT.format(user_id=user_id)
             deleted_all_conversations = False
             start = time.perf_counter()
+            # Ensure the conversation exists and has the current system prompt
+            # before saving this turn's user message.
             initialize_conversation(session_id, formatted_prompt, user_id, conn)
             print(
                 "stream initialize_conversation:",
@@ -105,6 +117,8 @@ async def ask_agent_stream(
             )
             start = time.perf_counter()
             messages = get_messages(session_id, user_id, conn)
+            # get_messages hides system messages from the UI. Add the prompt
+            # back into the LLM context if it is not already present.
             if not any(m["role"] == "system" for m in messages):
                 messages.insert(
                     0,
@@ -122,6 +136,8 @@ async def ask_agent_stream(
                 "chars:",
                 len(json.dumps(messages))
             )
+            # Prevent infinite tool loops if the model keeps requesting tools
+            # without producing a final answer.
             MAX_ITERATIONS = 10
             iteration = 0
             assistant_text = ""
@@ -192,12 +208,15 @@ async def ask_agent_stream(
                         }
                     )
                     break
-                # Parse and execute all accumulated tool calls.
+                # Parse and execute all accumulated tool calls after the stream
+                # finishes. OpenAI-compatible streams split function arguments
+                # across chunks, so executing earlier could use partial JSON.
                 for idx, tc_data in sorted(tool_calls_accumulator.items()):
                     tool_name = tc_data["name"]
                     arguments = json.loads(tc_data["arguments"])
                     print("stream executing tool:", tool_name)
-                    # Inject authenticated user_id for tools that modify user data.
+                    # Inject authenticated user_id server-side. The model never
+                    # gets to choose which user's bookmarks/history to mutate.
                     if tool_name in [
                         "save_bookmarks",
                         "get_bookmarks",
@@ -207,7 +226,7 @@ async def ask_agent_stream(
                         arguments["user_id"] = user_id
                     try:
                         tool_start = time.perf_counter()
-                        # Call the MCP tool via the active fastmcp client.
+                        # Call the MCP tool via the active FastMCP client.
                         tool_result = await client.call_tool(
                             tool_name,
                             arguments
@@ -218,6 +237,8 @@ async def ask_agent_stream(
                         else:
                             tool_text = tool_result.content[0].text
                         if tool_result.is_error:
+                            # Feed tool errors back into the model context so it
+                            # can explain the failure or choose another tool.
                             messages.append(
                                 {
                                     "role": "user",
@@ -263,7 +284,8 @@ async def ask_agent_stream(
                         if tool_name == "delete_all_conversations":
                             deleted_all_conversations = True
                         step_number += 1
-                        # Append assistant tool call reference and tool response to history.
+                        # Add the OpenAI-style assistant tool call plus the tool
+                        # result so the next model call can reason from it.
                         messages.append(
                             {
                                 "role": "assistant",
@@ -330,6 +352,7 @@ async def main(
         question: str = DEFAULT_QUESTION,
         session_id: str = "local-session"
 ):
+    """Manual terminal entry point for checking the agent loop locally."""
 
     # This is only for local testing from terminal.
     result = await ask_agent_stream(question, session_id, user_id=0)

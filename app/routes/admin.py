@@ -16,6 +16,8 @@ def get_analytics(
         admin=Depends(get_current_admin_user),
         conn=Depends(get_db)
 ):
+    """Return dashboard analytics; access is restricted to admin users."""
+
     try:
 
         return analytics_service.get_dashboard_analytics(

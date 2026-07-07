@@ -4,6 +4,12 @@ def process_tool_result(
         tool_name: str, 
         tool_text: str
 ):
+    """Parse and compact MCP tool output before giving it back to the LLM.
+
+    Database tools can return large arrays. The model usually needs only the
+    most relevant fields, so this function keeps context usage low while
+    preserving enough information to answer the user and cite work keys.
+    """
 
     tool_data = json.loads(tool_text)
 
@@ -13,7 +19,8 @@ def process_tool_result(
 
         first = tool_data[0]
 
-        # search_books result
+        # Book-like results share the "title" field across search, semantic,
+        # hybrid, recommendation, and similar-book tools.
         if "title" in first:
 
             for book in tool_data[:5]:
@@ -36,7 +43,8 @@ def process_tool_result(
                     }
                 )
 
-        # search_authors result
+        # Author search can return many rows, so keep more authors but limit the
+        # nested book title lists.
         elif "author_name" in first:
 
             for author in tool_data[:20]:

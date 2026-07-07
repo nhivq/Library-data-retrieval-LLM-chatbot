@@ -19,12 +19,14 @@ def get_or_create_conversation(
         user_id: int,
         conn
 ) -> int:
-    # Create a cursor that returns dict-like rows for easier field access
+    """Return an existing conversation id or create a new one for the user."""
+
+    # RealDictCursor lets the code access rows by column name instead of index.
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
-        # Debug
+        # Debug visibility for deployment/database mismatch problems.
         cursor.execute("""
         SELECT current_database(), current_schema()
         """)
@@ -34,7 +36,8 @@ def get_or_create_conversation(
             cursor.fetchone()
         )
 
-        # Try to find an existing conversation for this session_id
+        # session_id alone is not trusted; user_id is included so users can
+        # only reuse conversations they own.
         query_select = """
                        SELECT id 
                        FROM conversations 
@@ -46,11 +49,11 @@ def get_or_create_conversation(
 
         result = cursor.fetchone()
 
-        # If a conversation exists, return its id immediately
         if result:
             return result["id"]
 
-        # Otherwise insert a new conversation row and return the new id
+        # No conversation exists for this user/session pair, so create one and
+        # return the generated primary key.
         query_insert = """
                        INSERT INTO conversations (session_id, user_id) 
                        VALUES (%s, %s) 
@@ -103,10 +106,10 @@ def initialize_conversation(
         conn
 ):
     """
-    Initialize a conversation with a system message if it's empty.
+    Initialize a conversation with a system message if it is empty.
 
-    When a new conversation is created, this ensures a system message is
-    inserted to prime the conversation context.
+    The system prompt is persisted only once per conversation. Later requests
+    can rebuild the LLM context from stored messages.
     """
 
     conversation_id = get_or_create_conversation(
@@ -150,6 +153,8 @@ def get_all_conversations(
         user_id: int,
         conn
 ) -> list:
+    """Return all conversations owned by a user with a readable preview."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -194,6 +199,8 @@ def save_message(
         user_id: int,
         conn
 ):
+    """Persist one chat message in the user's conversation."""
+
     start = time.perf_counter()
 
     conversation_id = get_or_create_conversation(session_id, user_id, conn)
@@ -208,7 +215,7 @@ def save_message(
 
     try:
 
-        # Insert a new message tied to the conversation id
+        # Store only the role/content pair expected by OpenAI-style chat APIs.
         query = """
             INSERT INTO messages 
                 (conversation_id, role, content) 
@@ -244,11 +251,15 @@ def get_messages(
         user_id: int,
         conn
 ) -> list:
+    """Load non-system messages for a user/session in chronological order."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
-        # Fetch all messages for the given session in chronological order
+        # Hide persisted system messages from the frontend chat history.
+        # llm_client inserts the system message into the model context when
+        # needed, so the user-facing history stays clean.
         query = """
             SELECT m.role, 
                 m.content
@@ -269,7 +280,6 @@ def get_messages(
 
         messages = cursor.fetchall()
 
-        # Return a list of dict-like rows: [{'role':..., 'content':...}, ...]
         return [dict(row) for row in messages]
 
     finally:
@@ -282,11 +292,13 @@ def delete_conversation(
         user_id: int,
         conn
 ):
+    """Delete one conversation owned by the user."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
-        # Remove the conversation (and relying on DB cascade to remove messages if configured)
+        # Messages are removed by the ON DELETE CASCADE relationship.
         query = """
             DELETE 
             FROM conversations 
@@ -313,6 +325,8 @@ def delete_all_conversations(
         user_id: int,
         conn
 ):
+    """Delete every conversation owned by one user and return the count."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:

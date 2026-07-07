@@ -4,8 +4,8 @@ from app.mcp_integration.server import mcp
 
 client = Client(mcp)
 
-# MCP communication is asynchronous
 async def main():
+    """Small manual smoke test for MCP tool calls and tool listing."""
 
     async with client:
         result = await client.call_tool(

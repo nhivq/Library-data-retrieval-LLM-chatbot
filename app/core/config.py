@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Centralized configuration keeps environment-variable names out of the rest of
+# the codebase. Defaults here are development-friendly; production should set
+# secrets and public URLs explicitly.
 JWT_ALGORITHM="HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = 30

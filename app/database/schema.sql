@@ -6,12 +6,14 @@ CREATE TABLE IF NOT EXISTS books(
 
     id SERIAL PRIMARY KEY,
 
+    -- OpenLibrary work identifier, for example /works/OL123W.
     work_key VARCHAR(50) UNIQUE,
 
     title TEXT NOT NULL,
 
     description TEXT,
 
+    -- Arrays preserve the imported metadata without requiring lookup tables.
     tags TEXT[],
 
     languages TEXT[],
@@ -95,6 +97,7 @@ CREATE TABLE conversations (
 
     id SERIAL PRIMARY KEY,
 
+    -- Frontend-generated session id used to group chat messages.
     session_id VARCHAR(255) UNIQUE NOT NULL,
 
     user_id INTEGER
@@ -117,6 +120,7 @@ CREATE TABLE messages (
         REFERENCES conversations(id)
         ON DELETE CASCADE,
 
+    -- Matches OpenAI-style chat roles: system, user, assistant, tool.
     role VARCHAR(50) NOT NULL,
 
     content TEXT NOT NULL,
@@ -136,6 +140,7 @@ CREATE TABLE IF NOT EXISTS bookmarks(
 
     work_key VARCHAR(50) NOT NULL,
 
+    -- One user can save a book only once.
     PRIMARY KEY(user_id, work_key),
 
     FOREIGN KEY(user_id)

@@ -17,5 +17,6 @@ llm = OpenAI(
     base_url="https://openrouter.ai/api/v1"
 )
 
-# This client talks to that server and lets Python code call its tools.
+# This client talks to the in-process FastMCP server and lets Python code call
+# the same tools the LLM sees.
 client = Client(mcp)

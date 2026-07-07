@@ -3,6 +3,8 @@ from math import sqrt
 
 
 def resolve_embedding_provider() -> str:
+    """Choose the embedding provider from env vars, with local as fallback."""
+
     configured_provider = os.getenv("EMBEDDING_PROVIDER")
 
     if configured_provider:
@@ -41,6 +43,8 @@ _logged_provider = False
 
 
 def normalize_embedding(embedding: list[float]) -> list[float]:
+    """Normalize a vector so cosine-style similarity behaves consistently."""
+
     length = sqrt(
         sum(
             value * value
@@ -58,8 +62,12 @@ def normalize_embedding(embedding: list[float]) -> list[float]:
 
 
 def get_embedding_model():
+    """Lazy-load the local sentence-transformers model."""
+
     global _embedding_model
 
+    # Render web services have tight startup expectations. Local embeddings can
+    # be heavy, so require an explicit override there.
     if os.getenv("RENDER") and os.getenv("ALLOW_LOCAL_EMBEDDINGS_ON_RENDER") != "true":
         raise RuntimeError(
             "Local sentence-transformers embeddings are disabled on Render. "
@@ -92,6 +100,8 @@ def get_embedding_model():
 
 
 def get_openai_client():
+    """Lazy-load an OpenAI client for hosted embedding generation."""
+
     global _openai_client
 
     if _openai_client is None:
@@ -118,6 +128,8 @@ def get_openai_client():
 
 
 def embed_text_local(text: str) -> list[float]:
+    """Embed text with the local sentence-transformers model."""
+
     model = get_embedding_model()
 
     embedding = model.encode(
@@ -129,6 +141,8 @@ def embed_text_local(text: str) -> list[float]:
 
 
 def embed_text_openai(text: str) -> list[float]:
+    """Embed text with the configured OpenAI embedding model."""
+
     client = get_openai_client()
 
     response = client.embeddings.create(
@@ -143,6 +157,8 @@ def embed_text_openai(text: str) -> list[float]:
 
 
 def embed_text(text: str) -> list[float]:
+    """Embed text using the configured provider."""
+
     global _logged_provider
 
     if not _logged_provider:
@@ -163,4 +179,6 @@ def embed_text(text: str) -> list[float]:
 
 
 def format_vector(embedding: list[float]) -> str:
+    """Format a Python list as the string literal expected by pgvector."""
+
     return "[" + ",".join(str(value) for value in embedding) + "]"

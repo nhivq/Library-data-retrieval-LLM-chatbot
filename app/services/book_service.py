@@ -1,8 +1,11 @@
 import re
-from psycopg2.extras import Json, RealDictCursor # By default, psycopg2 returns tuples
+from psycopg2.extras import Json, RealDictCursor
 from app.semantic.embeddings import embed_text, format_vector
 
 
+# Words that are too general to help keyword recommendations.
+# The LLM is expected to expand user intent into useful concepts before
+# calling recommend_books; this list only removes filler words.
 RECOMMENDATION_STOP_WORDS = {
     "a",
     "an",
@@ -26,6 +29,8 @@ RECOMMENDATION_STOP_WORDS = {
 
 
 def extract_recommendation_terms(prompt: str):
+    """Extract stable, unique recommendation keywords from free text."""
+
     words = re.findall(
         r"[a-zA-Z]+",
         prompt.lower()
@@ -49,6 +54,13 @@ def build_recommendation_groups(
         prompt: str,
         concept_groups: list[str] | None = None
 ):
+    """Prepare concept groups for the SQL recommendation CTE.
+
+    Each group represents one user intent, such as setting, theme, or tone.
+    Books that match more groups are ranked higher than books that match many
+    words from only one group.
+    """
+
     groups = concept_groups or [prompt]
     prepared_groups = []
 
@@ -70,6 +82,12 @@ def build_recommendation_groups(
 
 
 def build_book_embedding_text(book: dict) -> str:
+    """Build the text used to create a book embedding.
+
+    Keeping this in one place helps ingestion and search use the same meaning
+    of "book content" when vector embeddings are generated or refreshed.
+    """
+
     parts = [
         book.get("title"),
         book.get("description"),
@@ -85,14 +103,15 @@ def build_book_embedding_text(book: dict) -> str:
         if part
     )
 
-# display first n books
 def get_books(
         limit: int = 10,
         conn=None
 ):
+    """Return the first books with their author names aggregated."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-    try: # "try" allow handling exceptions without crashing the application
+    try:
 
         query = """
                 SELECT b.work_key,
@@ -125,34 +144,38 @@ def get_books(
                 LIMIT %s 
                 """
 
-        cursor.execute(query, (limit,)) # Parameterized query to prevent SQL Injection and separate SQL logic from user input
+        # Parameterized queries keep user-controlled values out of the SQL text.
+        cursor.execute(query, (limit,))
 
         books = cursor.fetchall()
 
         return books
 
-    finally: # Make sure là kể cả lỗi hay 0 thì luôn cleanup
+    finally:
 
         cursor.close()
 
 
 def search_books(
-        q: str | None = None, # None = None -> this is optional, allow request without this parameter required
+        q: str | None = None,
         author: str | None = None,
         min_rating: float | None = None,
         tag: str | None = None,
         published_before_year: int | None = None,
         published_after_year: int | None = None,
         published_year: int | None = None,
-        page:int=1, # with nothing behind, this is mandatory -> without it, fail validation
+        page:int=1,
         limit:int=10,
-        conn = None # Used if caller provides connection; otherwise, do nothing
+        conn = None
 ):
+    """Search books using strict filters supplied by the API or MCP tool."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
-        # COALESCE returns first non-null value, replaces all null values with []
+        # Aggregate authors while preserving books that do not have author rows.
+        # COALESCE keeps the API response shape stable by returning [].
         query = """
                 SELECT b.work_key,
                        b.title,
@@ -180,7 +203,8 @@ def search_books(
         params = []
 
         if q:
-            # ~* dùng tương tự như ILIKE nhưng sẽ tránh đc i: art; o: cartoon
+            # PostgreSQL regex word boundaries avoid substring surprises such
+            # as "art" matching "cartoon".
             query += """
                 AND b.title ~* %s 
                 """
@@ -190,8 +214,8 @@ def search_books(
             )
 
         if author:
-            # EXISTS: I only need to know whether matching rows exist
-            # SELECT 1: I don't care what data is in it -> it could be any numbers but normally 1 is used
+            # EXISTS filters by author without changing the outer aggregation
+            # of all authors for the matching book.
             query += """
             AND EXISTS (
                 SELECT 1
@@ -212,7 +236,9 @@ def search_books(
 
             params.append(min_rating)
 
-        if tag: # ILIKE = case-insensitive matching; LIKE = case-sensitive
+        if tag:
+            # Tags are stored as an array, so convert to text for a simple
+            # case-insensitive partial match.
             query += """
             AND array_to_string(
                 b.tags,
@@ -245,7 +271,9 @@ def search_books(
 
             params.append(published_after_year)
 
-        if page < 1: # manually validate; query validation isn't used in this case for simplicity
+        # Clamp pagination in the service because this function is also called
+        # from MCP tools, not only FastAPI endpoints with Query validation.
+        if page < 1:
             page = 1
 
         if limit < 1:
@@ -290,6 +318,8 @@ def recommend_books(
         limit: int = 10,
         conn=None
 ):
+    """Rank books by matching expanded concept groups against local metadata."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -307,6 +337,10 @@ def recommend_books(
         if limit > 20:
             limit = 20
 
+        # The CTE pipeline keeps this readable:
+        # recommendation_groups turns JSON input into SQL rows,
+        # candidate_books builds one row per book with authors,
+        # scored_books calculates group coverage and weighted term matches.
         query = """
                 WITH recommendation_groups AS (
                     SELECT (group_data ->> 'group_id')::int AS group_id,
@@ -450,6 +484,8 @@ def semantic_search_books(
         limit: int = 10,
         conn=None
 ):
+    """Search by vector similarity using pgvector embeddings."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -460,6 +496,7 @@ def semantic_search_books(
         if limit > 20:
             limit = 20
 
+        # Convert the natural-language query into a pgvector literal.
         query_embedding = format_vector(embed_text(query))
 
         sql = """
@@ -528,6 +565,8 @@ def hybrid_search_books(
         published_year: int | None = None,
         conn=None
 ):
+    """Combine PostgreSQL full-text ranking with semantic similarity."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -544,6 +583,8 @@ def hybrid_search_books(
         if semantic_weight < 0:
             semantic_weight = 0
 
+        # Optional filters are collected separately so they can be appended to
+        # the SQL once while keeping parameter order predictable.
         filters = []
         filter_params = []
 
@@ -587,6 +628,8 @@ def hybrid_search_books(
 
         query_embedding = format_vector(embed_text(query))
 
+        # extra_filters is assembled from fixed SQL fragments above. User input
+        # still goes through filter_params and cursor.execute parameters.
         sql = f"""
                 WITH scored_books AS (
                     SELECT
@@ -690,7 +733,11 @@ def get_specific_book(
         work_key: str,
         conn=None
 ):
+    """Fetch one book by OpenLibrary work key."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
+    # Route parameters may arrive as "works/OL..." because FastAPI strips the
+    # leading slash from path captures. Normalize before querying.
     normalized_work_key = (
         work_key
         if work_key.startswith("/")
@@ -729,7 +776,7 @@ def get_specific_book(
 
         cursor.execute(query, (normalized_work_key,))
 
-        book = cursor.fetchone()  # Because 1 book can have many authors
+        book = cursor.fetchone()
 
         return book
 
@@ -742,9 +789,14 @@ def similar_books(
         conn=None,
         limit: int = 10
 ):
+    """Find books with similar tags, ratings, and authors."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
+        # This is a metadata-based similarity score, not vector search:
+        # shared tags matter most, shared authors matter next, and close
+        # ratings add a small tie-breaking signal.
         query = """
                 WITH target_book AS (
                     SELECT b.work_key,

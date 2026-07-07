@@ -2,6 +2,8 @@ from psycopg2.extras import RealDictCursor
 
 
 def _table_exists(cursor, table_name: str) -> bool:
+    """Check whether an optional table exists before querying it."""
+
     cursor.execute(
         """
         SELECT EXISTS (
@@ -18,6 +20,8 @@ def _table_exists(cursor, table_name: str) -> bool:
 
 
 def _column_exists(cursor, table_name: str, column_name: str) -> bool:
+    """Check whether an optional column exists before querying it."""
+
     cursor.execute(
         """
         SELECT EXISTS (
@@ -35,6 +39,8 @@ def _column_exists(cursor, table_name: str, column_name: str) -> bool:
 
 
 def _count_table(cursor, table_name: str) -> int:
+    """Return table size, treating missing optional tables as empty."""
+
     if not _table_exists(cursor, table_name):
         return 0
 
@@ -44,6 +50,8 @@ def _count_table(cursor, table_name: str) -> int:
 
 
 def _count_missing_column(cursor, table_name: str, column_name: str) -> int | None:
+    """Count NULL values for a column, or None if the column is unavailable."""
+
     if not _table_exists(cursor, table_name):
         return None
 
@@ -62,6 +70,8 @@ def _count_missing_column(cursor, table_name: str, column_name: str) -> int | No
 
 
 def _count_blank_column(cursor, table_name: str, column_name: str) -> int | None:
+    """Count NULL or blank text values for data quality checks."""
+
     if not _table_exists(cursor, table_name):
         return None
 
@@ -81,6 +91,8 @@ def _count_blank_column(cursor, table_name: str, column_name: str) -> int | None
 
 
 def _get_data_quality(cursor) -> dict:
+    """Collect counts that help spot incomplete imported library data."""
+
     cursor.execute(
         """
         SELECT COUNT(*) AS total
@@ -144,6 +156,8 @@ def _get_data_quality(cursor) -> dict:
 
 
 def _get_top_authors(cursor) -> list[dict]:
+    """Return authors with the largest number of linked books."""
+
     cursor.execute(
         """
         SELECT a.author_key,
@@ -164,6 +178,8 @@ def _get_top_authors(cursor) -> list[dict]:
 
 
 def _get_top_tags(cursor) -> list[dict]:
+    """Return the most common book tags from the tags array column."""
+
     if not _column_exists(cursor, "books", "tags"):
         return []
 
@@ -186,6 +202,8 @@ def _get_top_tags(cursor) -> list[dict]:
 
 
 def _get_recent_books(cursor) -> list[dict]:
+    """Return recently inserted books when created_at exists."""
+
     if _column_exists(cursor, "books", "created_at"):
         cursor.execute(
             """
@@ -214,6 +232,8 @@ def _get_recent_books(cursor) -> list[dict]:
 
 
 def get_dashboard_analytics(conn=None) -> dict:
+    """Build the admin dashboard analytics payload."""
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:

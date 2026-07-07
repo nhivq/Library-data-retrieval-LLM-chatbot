@@ -14,6 +14,8 @@ from app.core.config import SESSION_SECRET_KEY
 app = FastAPI()
 
 
+# SessionMiddleware is required by the Google OAuth flow because Authlib stores
+# temporary OAuth state in the signed session between redirect and callback.
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET_KEY,
@@ -21,25 +23,26 @@ app.add_middleware(
     https_only=False
 )
 
-# Fix CORS issue
-# By default, browsers only allow api calls on the same .com/ IP address
-# Backend server grant permission to frontend using HTTP response headers,
-# allow frontend to access API
+# CORS tells browsers which frontend origins may call this API.
+# Keep production and local development origins explicit so credentials are not
+# exposed to every website.
 app.add_middleware(
     CORSMiddleware,
 
-    allow_origins=[ # Allow requests from websites/ origin.
+    allow_origins=[
         "https://library-data-retrieval-llm-chatbot.vercel.app",
         "http://localhost:5500/frontend"
         ], 
-    allow_credentials=True, # Allow browser to include credentials
+    allow_credentials=True,
 
-    allow_methods=["*"], # Allow all HTTP methods (Get, Post, Put, Patch, Delete, etc.)
+    allow_methods=["*"],
 
-    allow_headers=["*"] # Allow all request headers (Content-Type, Authorization)
+    allow_headers=["*"]
 )
 
 
+# Routers are kept in separate modules by domain so service logic and HTTP
+# wiring stay easier to maintain independently.
 app.include_router(
     books_router
 )
@@ -67,7 +70,6 @@ app.include_router(
 app.include_router(
     admin_router
 )
-
 
 
 
