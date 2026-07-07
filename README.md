@@ -114,6 +114,12 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+If you want to use local embeddings instead of OpenAI embeddings during development, install the optional local model dependency:
+
+```bash
+pip install sentence-transformers
+```
+
 Create the database:
 
 ```bash
@@ -192,7 +198,7 @@ Some update scripts scan large OpenLibrary dump files in `db_source/`, so they c
 Semantic search uses:
 
 - OpenAI embeddings in production when `EMBEDDING_PROVIDER=openai`
-- local `sentence-transformers/all-MiniLM-L6-v2` embeddings when `EMBEDDING_PROVIDER=local`
+- optional local `sentence-transformers/all-MiniLM-L6-v2` embeddings when `EMBEDDING_PROVIDER=local`
 - 384-dimensional embeddings
 - PostgreSQL `pgvector`
 - cosine similarity with `<=>`
@@ -458,5 +464,5 @@ After changing MCP tools, prompts, or dependencies, restart/redeploy the backend
 - True semantic search requires embeddings to be backfilled before `/books/semantic-search` returns results.
 - Hybrid search requires the full-text search migration and works best after embeddings are backfilled.
 - On Render, use `EMBEDDING_PROVIDER=openai` to avoid loading `sentence-transformers` in web-service memory.
-- With `EMBEDDING_PROVIDER=local`, `sentence-transformers` downloads the embedding model on first use, so first startup/search can be slower and memory usage is higher.
+- With `EMBEDDING_PROVIDER=local`, install `sentence-transformers` manually. It downloads the embedding model on first use, so first startup/search can be slower and memory usage is higher.
 - Large embedding backfills should be run as a controlled background/admin task, not during normal web requests.
