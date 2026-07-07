@@ -2,10 +2,19 @@ import os
 from math import sqrt
 
 
-EMBEDDING_PROVIDER = os.getenv(
-    "EMBEDDING_PROVIDER",
-    "local"
-).lower()
+def resolve_embedding_provider() -> str:
+    configured_provider = os.getenv("EMBEDDING_PROVIDER")
+
+    if configured_provider:
+        return configured_provider.lower()
+
+    if os.getenv("OPENAI_API_KEY"):
+        return "openai"
+
+    return "local"
+
+
+EMBEDDING_PROVIDER = resolve_embedding_provider()
 
 DEFAULT_LOCAL_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
@@ -28,6 +37,7 @@ EMBEDDING_DIMENSIONS = int(
 
 _embedding_model = None
 _openai_client = None
+_logged_provider = False
 
 
 def normalize_embedding(embedding: list[float]) -> list[float]:
@@ -49,6 +59,12 @@ def normalize_embedding(embedding: list[float]) -> list[float]:
 
 def get_embedding_model():
     global _embedding_model
+
+    if os.getenv("RENDER") and os.getenv("ALLOW_LOCAL_EMBEDDINGS_ON_RENDER") != "true":
+        raise RuntimeError(
+            "Local sentence-transformers embeddings are disabled on Render. "
+            "Set EMBEDDING_PROVIDER=openai and OPENAI_API_KEY."
+        )
 
     if _embedding_model is None:
         # Import this only when semantic search is actually used.
@@ -127,6 +143,19 @@ def embed_text_openai(text: str) -> list[float]:
 
 
 def embed_text(text: str) -> list[float]:
+    global _logged_provider
+
+    if not _logged_provider:
+        print(
+            "Embedding provider:",
+            EMBEDDING_PROVIDER,
+            "model:",
+            EMBEDDING_MODEL_NAME,
+            "dimensions:",
+            EMBEDDING_DIMENSIONS
+        )
+        _logged_provider = True
+
     if EMBEDDING_PROVIDER == "openai":
         return embed_text_openai(text)
 
