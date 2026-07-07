@@ -77,13 +77,16 @@ JWT_SECRET_KEY=change_me
 SESSION_SECRET_KEY=change_me
 
 OPENROUTER_API_KEY=your_openrouter_api_key
+OPENAI_API_KEY=your_openai_api_key
 
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URI=http://127.0.0.1:8000/auth/google/callback
 
 FRONTEND_URL=http://127.0.0.1:5500/frontend
-EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL_NAME=text-embedding-3-small
+EMBEDDING_DIMENSIONS=384
 ```
 
 If `DATABASE_URL` is not set, the app falls back to:
@@ -188,7 +191,8 @@ Some update scripts scan large OpenLibrary dump files in `db_source/`, so they c
 
 Semantic search uses:
 
-- `sentence-transformers/all-MiniLM-L6-v2`
+- OpenAI embeddings in production when `EMBEDDING_PROVIDER=openai`
+- local `sentence-transformers/all-MiniLM-L6-v2` embeddings when `EMBEDDING_PROVIDER=local`
 - 384-dimensional embeddings
 - PostgreSQL `pgvector`
 - cosine similarity with `<=>`
@@ -217,6 +221,17 @@ Backfill embeddings:
 ```bash
 python scripts/updating/backfill_book_embeddings.py --limit 100
 ```
+
+On Render, set these environment variables before using semantic or hybrid search:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL_NAME=text-embedding-3-small
+EMBEDDING_DIMENSIONS=384
+```
+
+The `384` dimension setting matches the existing `embedding vector(384)` database column.
 
 Remove `--limit` when ready to embed the full dataset:
 
@@ -391,10 +406,14 @@ DATABASE_URL
 JWT_SECRET_KEY
 SESSION_SECRET_KEY
 OPENROUTER_API_KEY
+OPENAI_API_KEY
 FRONTEND_URL
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI
+EMBEDDING_PROVIDER
+EMBEDDING_MODEL_NAME
+EMBEDDING_DIMENSIONS
 ```
 
 `DATABASE_URL` should point to the Neon PostgreSQL database.
@@ -438,5 +457,6 @@ After changing MCP tools, prompts, or dependencies, restart/redeploy the backend
 - The current recommendation endpoint is concept-aware but still SQL-based.
 - True semantic search requires embeddings to be backfilled before `/books/semantic-search` returns results.
 - Hybrid search requires the full-text search migration and works best after embeddings are backfilled.
-- `sentence-transformers` downloads the embedding model on first use, so first startup/search can be slower.
+- On Render, use `EMBEDDING_PROVIDER=openai` to avoid loading `sentence-transformers` in web-service memory.
+- With `EMBEDDING_PROVIDER=local`, `sentence-transformers` downloads the embedding model on first use, so first startup/search can be slower and memory usage is higher.
 - Large embedding backfills should be run as a controlled background/admin task, not during normal web requests.

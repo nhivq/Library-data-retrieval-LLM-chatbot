@@ -1,12 +1,50 @@
 import os
+from math import sqrt
 
 
-EMBEDDING_MODEL_NAME = os.getenv(
-    "EMBEDDING_MODEL_NAME",
-    "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_PROVIDER = os.getenv(
+    "EMBEDDING_PROVIDER",
+    "local"
+).lower()
+
+DEFAULT_LOCAL_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+
+EMBEDDING_MODEL_NAME = (
+    os.getenv("EMBEDDING_MODEL_NAME")
+    or (
+        DEFAULT_OPENAI_EMBEDDING_MODEL
+        if EMBEDDING_PROVIDER == "openai"
+        else DEFAULT_LOCAL_EMBEDDING_MODEL
+    )
+)
+
+EMBEDDING_DIMENSIONS = int(
+    os.getenv(
+        "EMBEDDING_DIMENSIONS",
+        "384"
+    )
 )
 
 _embedding_model = None
+_openai_client = None
+
+
+def normalize_embedding(embedding: list[float]) -> list[float]:
+    length = sqrt(
+        sum(
+            value * value
+            for value in embedding
+        )
+    )
+
+    if length == 0:
+        return embedding
+
+    return [
+        value / length
+        for value in embedding
+    ]
 
 
 def get_embedding_model():
@@ -37,7 +75,33 @@ def get_embedding_model():
     return _embedding_model
 
 
-def embed_text(text: str) -> list[float]:
+def get_openai_client():
+    global _openai_client
+
+    if _openai_client is None:
+        try:
+            from openai import OpenAI
+
+        except Exception as e:
+            raise RuntimeError(
+                "OpenAI embedding dependencies are not available"
+            ) from e
+
+        api_key = os.getenv("OPENAI_API_KEY")
+
+        if not api_key:
+            raise RuntimeError(
+                "OPENAI_API_KEY is required when EMBEDDING_PROVIDER=openai"
+            )
+
+        _openai_client = OpenAI(
+            api_key=api_key
+        )
+
+    return _openai_client
+
+
+def embed_text_local(text: str) -> list[float]:
     model = get_embedding_model()
 
     embedding = model.encode(
@@ -46,6 +110,27 @@ def embed_text(text: str) -> list[float]:
     )
 
     return embedding.tolist()
+
+
+def embed_text_openai(text: str) -> list[float]:
+    client = get_openai_client()
+
+    response = client.embeddings.create(
+        model=EMBEDDING_MODEL_NAME,
+        input=text,
+        dimensions=EMBEDDING_DIMENSIONS
+    )
+
+    return normalize_embedding(
+        response.data[0].embedding
+    )
+
+
+def embed_text(text: str) -> list[float]:
+    if EMBEDDING_PROVIDER == "openai":
+        return embed_text_openai(text)
+
+    return embed_text_local(text)
 
 
 def format_vector(embedding: list[float]) -> str:
