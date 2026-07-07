@@ -29,6 +29,8 @@ def process_tool_result(
                         "concept_count": book.get("concept_count"),
                         "similarity_score": book.get("similarity_score"),
                         "semantic_score": book.get("semantic_score"),
+                        "keyword_score": book.get("keyword_score"),
+                        "hybrid_score": book.get("hybrid_score"),
                         "authors": book.get("authors"),
                         "tags": book.get("tags")[:3] if book.get("tags") else None,
                     }

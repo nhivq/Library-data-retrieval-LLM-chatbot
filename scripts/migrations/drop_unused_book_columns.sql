@@ -1,0 +1,4 @@
+ALTER TABLE books
+DROP COLUMN IF EXISTS places,
+DROP COLUMN IF EXISTS times,
+DROP COLUMN IF EXISTS openlibrary_updated_at;

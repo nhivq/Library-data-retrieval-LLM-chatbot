@@ -5,7 +5,7 @@ from fastapi import (
     Depends
 )
 from app.database.connection import get_db
-from app.schemas.book_schemas import BookResponse, SimilarBookResponse, RecommendationBookResponse, SemanticBookResponse
+from app.schemas.book_schemas import BookResponse, SimilarBookResponse, RecommendationBookResponse, SemanticBookResponse, HybridBookResponse
 from app.services import book_service
 
 router=APIRouter(
@@ -148,6 +148,54 @@ def semantic_search_books(
         raise HTTPException(
             status_code=400,
             detail="Could not search books semantically"
+        )
+    
+
+# ---------- Hybrid Search Books ----------
+# Path allows:
+# /books/hybrid-search?query=friendship after war
+@router.get(
+    "/hybrid-search",
+    response_model=list[HybridBookResponse]
+)
+def hybrid_search_books(
+        query: str,
+        limit: int = 10,
+        keyword_weight: float = 0.4,
+        semantic_weight: float = 0.6,
+        author: str | None = None,
+        min_rating: float | None = None,
+        tag: str | None = None,
+        published_before_year: int | None = None,
+        published_after_year: int | None = None,
+        published_year: int | None = None,
+        conn=Depends(get_db)
+):
+    try:
+        return book_service.hybrid_search_books(
+            query=query,
+            limit=limit,
+            keyword_weight=keyword_weight,
+            semantic_weight=semantic_weight,
+            author=author,
+            min_rating=min_rating,
+            tag=tag,
+            published_before_year=published_before_year,
+            published_after_year=published_after_year,
+            published_year=published_year,
+            conn=conn
+        )
+
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not search books with hybrid search"
         )
 
 

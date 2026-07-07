@@ -129,6 +129,37 @@ def semantic_search_books(
 
 
 @mcp.tool(
+    description="""
+Hybrid book search using both PostgreSQL keyword relevance and semantic vector similarity.
+
+Use this for most natural-language book discovery queries, especially when the
+user mixes exact terms with concepts, mood, topic, setting, or theme.
+Returns books ranked by weighted keyword + semantic score.
+"""
+)
+def hybrid_search_books(
+    query: str,
+    limit: int = 10,
+    keyword_weight: float = 0.4,
+    semantic_weight: float = 0.6
+):
+    db = get_db()
+    conn = next(db)
+
+    try:
+        return book_service.hybrid_search_books(
+            query=query,
+            limit=limit,
+            keyword_weight=keyword_weight,
+            semantic_weight=semantic_weight,
+            conn=conn
+        )
+
+    finally:
+        db.close()
+
+
+@mcp.tool(
     description="Get one book by its exact work_key."
 )
 def get_book(

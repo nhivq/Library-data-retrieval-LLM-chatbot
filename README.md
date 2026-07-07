@@ -17,6 +17,7 @@ The chatbot can search books and authors, manage user bookmarks, remember conver
 - LLM tool calling through FastMCP.
 - Recommendation search using concept-group ranking.
 - Semantic vector search using Sentence Transformers and pgvector.
+- Hybrid book search using PostgreSQL full-text ranking plus semantic vector similarity.
 - Data import/update scripts for OpenLibrary works, editions, authors, languages, and Wikidata enrichment.
 
 ## Tech Stack
@@ -127,6 +128,7 @@ Apply optional migrations as needed:
 ```bash
 psql "$DATABASE_URL" -f scripts/migrations/add_user_roles_and_oauth_columns.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
+psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
 ```
 
 Run the backend:
@@ -182,7 +184,7 @@ python scripts/validation/validate_authors.py
 
 Some update scripts scan large OpenLibrary dump files in `db_source/`, so they can take a long time.
 
-## Semantic Search Setup
+## Semantic and Hybrid Search Setup
 
 Semantic search uses:
 
@@ -191,10 +193,23 @@ Semantic search uses:
 - PostgreSQL `pgvector`
 - cosine similarity with `<=>`
 
+Hybrid search combines semantic similarity with PostgreSQL full-text search:
+
+- `tsvector` search data stored on each book
+- a GIN index for keyword relevance
+- `ts_rank` keyword scores
+- weighted ranking from keyword and semantic scores
+
 Apply the pgvector migration:
 
 ```bash
 psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
+```
+
+Apply the full-text search migration:
+
+```bash
+psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
 ```
 
 Backfill embeddings:
@@ -217,6 +232,18 @@ GET /books/semantic-search?query=books about friendship after war
 
 The semantic text for each book is built from title, description, authors, tags, languages, and publishers.
 
+Test hybrid search:
+
+```http
+GET /books/hybrid-search?query=books about friendship after war&limit=5
+```
+
+Tune keyword and semantic weights:
+
+```http
+GET /books/hybrid-search?query=war history&keyword_weight=0.7&semantic_weight=0.3
+```
+
 ## API Overview
 
 Authentication:
@@ -237,6 +264,7 @@ GET /books/
 GET /books/search
 GET /books/recommendations
 GET /books/semantic-search
+GET /books/hybrid-search
 GET /books/{work_key}
 GET /books/{work_key}/similar
 ```
@@ -282,6 +310,7 @@ The chat endpoint streams responses from the LLM and allows tool use through Fas
 - `search_books`
 - `recommend_books`
 - `semantic_search_books`
+- `hybrid_search_books`
 - `get_book`
 - `similar_books`
 - `search_authors`
@@ -330,6 +359,7 @@ Apply the schema and migrations against the Neon database:
 psql "$DATABASE_URL" -f app/database/schema.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_user_roles_and_oauth_columns.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
+psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
 ```
 
 If semantic search is enabled, run the embedding backfill against Neon:
@@ -407,5 +437,6 @@ After changing MCP tools, prompts, or dependencies, restart/redeploy the backend
 
 - The current recommendation endpoint is concept-aware but still SQL-based.
 - True semantic search requires embeddings to be backfilled before `/books/semantic-search` returns results.
+- Hybrid search requires the full-text search migration and works best after embeddings are backfilled.
 - `sentence-transformers` downloads the embedding model on first use, so first startup/search can be slower.
 - Large embedding backfills should be run as a controlled background/admin task, not during normal web requests.

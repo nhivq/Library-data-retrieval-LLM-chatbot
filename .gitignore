@@ -27,6 +27,5 @@ dist/
 build/
 
 # db files
-scripts/
 data/
 db_source/
