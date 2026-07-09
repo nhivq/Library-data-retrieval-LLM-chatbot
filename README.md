@@ -75,6 +75,7 @@ Recommended variables:
 DATABASE_URL=postgresql://book_user:123456@localhost:5432/book_db
 REDIS_URL=redis://localhost:6379/0
 CACHE_ENABLED=true
+CACHE_DEBUG=false
 
 JWT_SECRET_KEY=change_me
 SESSION_SECRET_KEY=change_me
@@ -104,7 +105,9 @@ POSTGRES_PORT=5432
 
 Redis is optional. If `REDIS_URL` is unset or Redis is unavailable, the API
 continues to use PostgreSQL/OpenAI directly. Set `CACHE_ENABLED=false` to turn
-off caching without changing the rest of the configuration.
+off caching without changing the rest of the configuration. Set
+`CACHE_DEBUG=true` temporarily to show cache hit/miss diagnostics in backend
+logs.
 
 ## Local Setup
 

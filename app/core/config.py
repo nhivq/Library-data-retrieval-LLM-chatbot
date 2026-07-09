@@ -28,3 +28,7 @@ CACHE_ENABLED = os.getenv(
     "CACHE_ENABLED",
     "true"
 ).lower() == "true"
+CACHE_DEBUG = os.getenv(
+    "CACHE_DEBUG",
+    "false"
+).lower() == "true"

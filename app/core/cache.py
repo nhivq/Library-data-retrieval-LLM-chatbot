@@ -1,9 +1,10 @@
 import hashlib
 import json
+import logging
 from datetime import date, datetime
 from decimal import Decimal
 
-from app.core.config import CACHE_ENABLED, REDIS_URL
+from app.core.config import CACHE_DEBUG, CACHE_ENABLED, REDIS_URL
 
 
 try:
@@ -14,6 +15,33 @@ except Exception:
 
 
 _redis_client = None
+logger = logging.getLogger(__name__)
+
+
+def _debug_cache_event(
+        event: str,
+        key: str | None = None,
+        error: Exception | None = None
+):
+    """Emit opt-in cache diagnostics without noisy production logs."""
+
+    if not CACHE_DEBUG:
+        return
+
+    if error is not None:
+        logger.debug(
+            "cache.%s key=%s error=%s",
+            event,
+            key,
+            error
+        )
+        return
+
+    logger.debug(
+        "cache.%s key=%s",
+        event,
+        key
+    )
 
 
 def _json_default(value):
@@ -72,22 +100,47 @@ def get_json(key: str):
     client = get_redis_client()
 
     if client is None:
+        _debug_cache_event(
+            "disabled",
+            key
+        )
         return None
 
     try:
         value = client.get(key)
 
-    except Exception:
+    except Exception as e:
+        _debug_cache_event(
+            "read_error",
+            key,
+            e
+        )
         return None
 
     if value is None:
+        _debug_cache_event(
+            "miss",
+            key
+        )
         return None
 
     try:
-        return json.loads(value)
+        parsed_value = json.loads(value)
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        _debug_cache_event(
+            "decode_error",
+            key,
+            e
+        )
         return None
+
+    _debug_cache_event(
+        "hit",
+        key
+    )
+
+    return parsed_value
 
 
 def set_json(
@@ -100,6 +153,10 @@ def set_json(
     client = get_redis_client()
 
     if client is None:
+        _debug_cache_event(
+            "disabled",
+            key
+        )
         return
 
     try:
@@ -112,5 +169,15 @@ def set_json(
             )
         )
 
-    except Exception:
+    except Exception as e:
+        _debug_cache_event(
+            "write_error",
+            key,
+            e
+        )
         return
+
+    _debug_cache_event(
+        "write",
+        key
+    )
