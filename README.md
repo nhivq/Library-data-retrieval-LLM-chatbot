@@ -24,6 +24,7 @@ The chatbot can search books and authors, manage user bookmarks, remember conver
 
 - Backend: FastAPI, Starlette, Pydantic
 - Database: PostgreSQL, psycopg2, raw SQL
+- Cache: Redis for optional read-through caching
 - Auth: JWT, bcrypt, Google OAuth via Authlib
 - LLM: OpenRouter through the OpenAI-compatible client
 - Tool layer: FastMCP
@@ -72,6 +73,8 @@ Recommended variables:
 
 ```env
 DATABASE_URL=postgresql://book_user:123456@localhost:5432/book_db
+REDIS_URL=redis://localhost:6379/0
+CACHE_ENABLED=true
 
 JWT_SECRET_KEY=change_me
 SESSION_SECRET_KEY=change_me
@@ -99,6 +102,10 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 ```
 
+Redis is optional. If `REDIS_URL` is unset or Redis is unavailable, the API
+continues to use PostgreSQL/OpenAI directly. Set `CACHE_ENABLED=false` to turn
+off caching without changing the rest of the configuration.
+
 ## Local Setup
 
 Create and activate a virtual environment:
@@ -112,6 +119,12 @@ Install dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Start Redis locally if you want cache support during development:
+
+```bash
+redis-server
 ```
 
 If you want to use local embeddings instead of OpenAI embeddings during development, install the optional local model dependency:

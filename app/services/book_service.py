@@ -1,6 +1,13 @@
 import re
 from psycopg2.extras import Json, RealDictCursor
+from app.core.cache import get_json, make_cache_key, set_json
 from app.semantic.embeddings import embed_text, format_vector
+
+
+BOOK_DETAIL_CACHE_TTL_SECONDS = 60 * 60 * 24
+BOOK_LIST_CACHE_TTL_SECONDS = 60 * 30
+BOOK_SEARCH_CACHE_TTL_SECONDS = 60 * 15
+BOOK_RECOMMENDATION_CACHE_TTL_SECONDS = 60 * 30
 
 
 # Words that are too general to help keyword recommendations.
@@ -109,6 +116,24 @@ def get_books(
 ):
     """Return the first books with their author names aggregated."""
 
+    if limit < 1:
+        limit = 10
+
+    if limit > 100:
+        limit = 100
+
+    cache_key = make_cache_key(
+        "book:list",
+        {
+            "limit": limit
+        }
+    )
+
+    cached_books = get_json(cache_key)
+
+    if cached_books is not None:
+        return cached_books
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -149,6 +174,12 @@ def get_books(
 
         books = cursor.fetchall()
 
+        set_json(
+            cache_key,
+            books,
+            ttl_seconds=BOOK_LIST_CACHE_TTL_SECONDS
+        )
+
         return books
 
     finally:
@@ -169,6 +200,35 @@ def search_books(
         conn = None
 ):
     """Search books using strict filters supplied by the API or MCP tool."""
+
+    if page < 1:
+        page = 1
+
+    if limit < 1:
+        limit = 10
+
+    if limit > 100:
+        limit = 100
+
+    cache_key = make_cache_key(
+        "book:search",
+        {
+            "q": q,
+            "author": author,
+            "min_rating": min_rating,
+            "tag": tag,
+            "published_before_year": published_before_year,
+            "published_after_year": published_after_year,
+            "published_year": published_year,
+            "page": page,
+            "limit": limit
+        }
+    )
+
+    cached_books = get_json(cache_key)
+
+    if cached_books is not None:
+        return cached_books
 
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -271,17 +331,6 @@ def search_books(
 
             params.append(published_after_year)
 
-        # Clamp pagination in the service because this function is also called
-        # from MCP tools, not only FastAPI endpoints with Query validation.
-        if page < 1:
-            page = 1
-
-        if limit < 1:
-            limit = 10
-
-        if limit > 100:
-            limit = 100
-
         offset = (page - 1) * limit
 
         query += """
@@ -305,6 +354,13 @@ def search_books(
         )
 
         books = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            books,
+            ttl_seconds=BOOK_SEARCH_CACHE_TTL_SECONDS
+        )
+
         return books
 
     finally:
@@ -336,6 +392,20 @@ def recommend_books(
 
         if limit > 20:
             limit = 20
+
+        cache_key = make_cache_key(
+            "book:recommend",
+            {
+                "prepared_groups": prepared_groups,
+                "concept_count": concept_count,
+                "limit": limit
+            }
+        )
+
+        cached_books = get_json(cache_key)
+
+        if cached_books is not None:
+            return cached_books
 
         # The CTE pipeline keeps this readable:
         # recommendation_groups turns JSON input into SQL rows,
@@ -472,7 +542,15 @@ def recommend_books(
             )
         )
 
-        return cursor.fetchall()
+        books = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            books,
+            ttl_seconds=BOOK_RECOMMENDATION_CACHE_TTL_SECONDS
+        )
+
+        return books
 
     finally:
 
@@ -495,6 +573,19 @@ def semantic_search_books(
 
         if limit > 20:
             limit = 20
+
+        cache_key = make_cache_key(
+            "book:semantic",
+            {
+                "query": query,
+                "limit": limit
+            }
+        )
+
+        cached_books = get_json(cache_key)
+
+        if cached_books is not None:
+            return cached_books
 
         # Convert the natural-language query into a pgvector literal.
         query_embedding = format_vector(embed_text(query))
@@ -545,7 +636,15 @@ def semantic_search_books(
             )
         )
 
-        return cursor.fetchall()
+        books = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            books,
+            ttl_seconds=BOOK_RECOMMENDATION_CACHE_TTL_SECONDS
+        )
+
+        return books
 
     finally:
 
@@ -582,6 +681,27 @@ def hybrid_search_books(
 
         if semantic_weight < 0:
             semantic_weight = 0
+
+        cache_key = make_cache_key(
+            "book:hybrid",
+            {
+                "query": query,
+                "limit": limit,
+                "keyword_weight": keyword_weight,
+                "semantic_weight": semantic_weight,
+                "author": author,
+                "min_rating": min_rating,
+                "tag": tag,
+                "published_before_year": published_before_year,
+                "published_after_year": published_after_year,
+                "published_year": published_year
+            }
+        )
+
+        cached_books = get_json(cache_key)
+
+        if cached_books is not None:
+            return cached_books
 
         # Optional filters are collected separately so they can be appended to
         # the SQL once while keeping parameter order predictable.
@@ -722,7 +842,15 @@ def hybrid_search_books(
             )
         )
 
-        return cursor.fetchall()
+        books = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            books,
+            ttl_seconds=BOOK_RECOMMENDATION_CACHE_TTL_SECONDS
+        )
+
+        return books
 
     finally:
 
@@ -735,7 +863,6 @@ def get_specific_book(
 ):
     """Fetch one book by OpenLibrary work key."""
 
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
     # Route parameters may arrive as "works/OL..." because FastAPI strips the
     # leading slash from path captures. Normalize before querying.
     normalized_work_key = (
@@ -743,6 +870,20 @@ def get_specific_book(
         if work_key.startswith("/")
         else f"/{work_key}"
     )
+
+    cache_key = make_cache_key(
+        "book:detail",
+        {
+            "work_key": normalized_work_key
+        }
+    )
+
+    cached_book = get_json(cache_key)
+
+    if cached_book is not None:
+        return cached_book
+
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
 
@@ -778,6 +919,12 @@ def get_specific_book(
 
         book = cursor.fetchone()
 
+        set_json(
+            cache_key,
+            book,
+            ttl_seconds=BOOK_DETAIL_CACHE_TTL_SECONDS
+        )
+
         return book
 
     finally:
@@ -790,6 +937,25 @@ def similar_books(
         limit: int = 10
 ):
     """Find books with similar tags, ratings, and authors."""
+
+    if limit < 1:
+        limit = 10
+
+    if limit > 20:
+        limit = 20
+
+    cache_key = make_cache_key(
+        "book:similar",
+        {
+            "work_key": work_key,
+            "limit": limit
+        }
+    )
+
+    cached_books = get_json(cache_key)
+
+    if cached_books is not None:
+        return cached_books
 
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -882,7 +1048,15 @@ def similar_books(
 
         cursor.execute(query, (work_key, work_key, limit))
 
-        return cursor.fetchall()
+        books = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            books,
+            ttl_seconds=BOOK_RECOMMENDATION_CACHE_TTL_SECONDS
+        )
+
+        return books
 
     finally:
         cursor.close()

@@ -1,10 +1,27 @@
 from psycopg2.extras import RealDictCursor
+from app.core.cache import get_json, make_cache_key, set_json
+
+
+AUTHOR_DETAIL_CACHE_TTL_SECONDS = 60 * 60 * 24
+AUTHOR_LIST_CACHE_TTL_SECONDS = 60 * 30
 
 def get_author(
         author_key: str,
         conn = None
 ):
     """Fetch one author and aggregate the titles connected to that author."""
+
+    cache_key = make_cache_key(
+        "author:detail",
+        {
+            "author_key": author_key
+        }
+    )
+
+    cached_author = get_json(cache_key)
+
+    if cached_author is not None:
+        return cached_author
 
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     try:
@@ -33,6 +50,12 @@ def get_author(
 
         author = cursor.fetchone()
 
+        set_json(
+            cache_key,
+            author,
+            ttl_seconds=AUTHOR_DETAIL_CACHE_TTL_SECONDS
+        )
+
         return author
 
     finally:
@@ -47,6 +70,21 @@ def search_authors(
         conn=None
 ):
     """Search authors by flexible name/key filters."""
+
+    cache_key = make_cache_key(
+        "author:search",
+        {
+            "author_name": author_name,
+            "author_starts_with": author_starts_with,
+            "author_ends_with": author_ends_with,
+            "author_key": author_key
+        }
+    )
+
+    cached_authors = get_json(cache_key)
+
+    if cached_authors is not None:
+        return cached_authors
 
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -102,7 +140,15 @@ def search_authors(
 
         cursor.execute(query, params)
 
-        return cursor.fetchall()
+        authors = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            authors,
+            ttl_seconds=AUTHOR_LIST_CACHE_TTL_SECONDS
+        )
+
+        return authors
 
     finally:
         cursor.close()
@@ -115,17 +161,31 @@ def get_authors(
 ):
     """Return a paginated author list with each author's books."""
 
+    if page < 1:
+        page = 1
+
+    if limit < 1:
+        limit = 10
+
+    if limit > 100:
+        limit = 100
+
+    cache_key = make_cache_key(
+        "author:list",
+        {
+            "page": page,
+            "limit": limit
+        }
+    )
+
+    cached_authors = get_json(cache_key)
+
+    if cached_authors is not None:
+        return cached_authors
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
-        if page < 1:
-            page = 1
-
-        if limit < 1:
-            limit = 10
-
-        if limit > 100:
-            limit = 100
 
         offset = (page - 1) * limit
 
@@ -158,7 +218,15 @@ def get_authors(
 
         cursor.execute(query, (limit, offset))
 
-        return cursor.fetchall()
+        authors = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            authors,
+            ttl_seconds=AUTHOR_LIST_CACHE_TTL_SECONDS
+        )
+
+        return authors
 
     finally:
         cursor.close()

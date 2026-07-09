@@ -1,6 +1,8 @@
 import os
 from math import sqrt
 
+from app.core.cache import get_json, make_cache_key, set_json
+
 
 def resolve_embedding_provider() -> str:
     """Choose the embedding provider from env vars, with local as fallback."""
@@ -172,10 +174,34 @@ def embed_text(text: str) -> list[float]:
         )
         _logged_provider = True
 
-    if EMBEDDING_PROVIDER == "openai":
-        return embed_text_openai(text)
+    cache_key = make_cache_key(
+        "embedding",
+        {
+            "provider": EMBEDDING_PROVIDER,
+            "model": EMBEDDING_MODEL_NAME,
+            "dimensions": EMBEDDING_DIMENSIONS,
+            "text": text
+        }
+    )
 
-    return embed_text_local(text)
+    cached_embedding = get_json(cache_key)
+
+    if cached_embedding is not None:
+        return cached_embedding
+
+    if EMBEDDING_PROVIDER == "openai":
+        embedding = embed_text_openai(text)
+
+    else:
+        embedding = embed_text_local(text)
+
+    set_json(
+        cache_key,
+        embedding,
+        ttl_seconds=60 * 60 * 24 * 30
+    )
+
+    return embedding
 
 
 def format_vector(embedding: list[float]) -> str:

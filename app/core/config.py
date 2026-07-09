@@ -22,3 +22,9 @@ FRONTEND_URL = os.getenv(
     "http://127.0.0.1:5500/frontend"
 )
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
+
+REDIS_URL = os.getenv("REDIS_URL")
+CACHE_ENABLED = os.getenv(
+    "CACHE_ENABLED",
+    "true"
+).lower() == "true"

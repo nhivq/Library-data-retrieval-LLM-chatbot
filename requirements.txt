@@ -68,6 +68,7 @@ python-jose==3.5.0
 python-multipart==0.0.29
 PyYAML==6.0.3
 referencing==0.37.0
+redis==5.2.1
 requests==2.34.2
 rich==15.0.0
 rich-rst==2.0.1
