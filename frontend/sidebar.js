@@ -11,6 +11,7 @@
 
 let conversationCache = [];
 let loadingConversationId = null;
+const conversationMessageCache = new Map();
 
 async function fetchConversations(){
 
@@ -69,6 +70,14 @@ function shortSessionId(sessionId) {
 const ConvHistory = {
 
   addMessage(userText, aiText) {
+    appendCachedConversationMessage(
+      currentSessionId,
+      {
+        role: 'assistant',
+        content: aiText
+      }
+    );
+
     // Backend already saved it.
     // Just refresh sidebar.
     setTimeout(
@@ -81,6 +90,13 @@ const ConvHistory = {
   addUserMessage(userText) {
 
     upsertActiveConversation(userText);
+    appendCachedConversationMessage(
+      currentSessionId,
+      {
+        role: 'user',
+        content: userText
+      }
+    );
 
     setTimeout(
       fetchConversations,
@@ -97,6 +113,10 @@ const ConvHistory = {
     loadingConversationId = null;
 
     loadConversation([]);
+    conversationMessageCache.set(
+      sessionId,
+      []
+    );
     renderBackendConversations(conversationCache);
 
   },
@@ -253,8 +273,17 @@ async function clearConversations(){
 // ── Loading conversation ──────────────────────────────────────
 async function loadConversationFromBackend(sessionId){
 
- loadingConversationId = sessionId;
  currentSessionId = sessionId;
+
+ if(conversationMessageCache.has(sessionId)){
+    loadConversation(
+      conversationMessageCache.get(sessionId)
+    );
+    loadingConversationId = null;
+ } else {
+    loadingConversationId = sessionId;
+ }
+
  renderBackendConversations(conversationCache);
 
  try {
@@ -272,6 +301,11 @@ async function loadConversationFromBackend(sessionId){
       return;
     }
 
+    conversationMessageCache.set(
+      sessionId,
+      messages
+    );
+
     loadConversation(messages);
 
  }
@@ -284,6 +318,18 @@ async function loadConversationFromBackend(sessionId){
       renderBackendConversations(conversationCache);
     }
  }
+}
+
+function appendCachedConversationMessage(sessionId, message){
+
+  const cachedMessages = conversationMessageCache.get(sessionId) || [];
+
+  cachedMessages.push(message);
+
+  conversationMessageCache.set(
+    sessionId,
+    cachedMessages
+  );
 }
 
 // ── New Chat button ───────────────────────────────────────────

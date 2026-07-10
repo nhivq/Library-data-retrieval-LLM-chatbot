@@ -152,6 +152,7 @@ Apply optional migrations as needed:
 
 ```bash
 psql "$DATABASE_URL" -f scripts/migrations/add_user_roles_and_oauth_columns.sql
+psql "$DATABASE_URL" -f scripts/migrations/add_conversation_indexes.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
 ```
@@ -395,6 +396,7 @@ Apply the schema and migrations against the Neon database:
 ```bash
 psql "$DATABASE_URL" -f app/database/schema.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_user_roles_and_oauth_columns.sql
+psql "$DATABASE_URL" -f scripts/migrations/add_conversation_indexes.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
 psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
 ```
