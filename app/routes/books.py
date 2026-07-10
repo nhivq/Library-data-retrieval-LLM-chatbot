@@ -115,6 +115,33 @@ def recommend_books(
 
 
 @router.get(
+    "/top-rated-by-tag",
+    response_model=list[BookResponse]
+)
+def top_rated_books_by_tag(
+        tag: str,
+        limit: int = 5,
+        conn=Depends(get_db)
+):
+    """Return the highest-rated books that share a selected tag."""
+
+    try:
+
+        return book_service.get_top_rated_books_by_tag(
+            tag=tag,
+            limit=limit,
+            conn=conn
+        )
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Could not get books by tag"
+        )
+
+
+@router.get(
     "/semantic-search",
     response_model=list[SemanticBookResponse]
 )

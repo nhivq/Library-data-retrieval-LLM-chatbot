@@ -8,6 +8,7 @@ BOOK_DETAIL_CACHE_TTL_SECONDS = 60 * 60 * 24
 BOOK_LIST_CACHE_TTL_SECONDS = 60 * 30
 BOOK_SEARCH_CACHE_TTL_SECONDS = 60 * 15
 BOOK_RECOMMENDATION_CACHE_TTL_SECONDS = 60 * 30
+BOOK_TAG_CACHE_TTL_SECONDS = 60 * 30
 
 
 # Words that are too general to help keyword recommendations.
@@ -359,6 +360,99 @@ def search_books(
             cache_key,
             books,
             ttl_seconds=BOOK_SEARCH_CACHE_TTL_SECONDS
+        )
+
+        return books
+
+    finally:
+
+        cursor.close()
+
+
+def get_top_rated_books_by_tag(
+        tag: str,
+        limit: int = 5,
+        conn=None
+):
+    """Return the highest-rated books that share a specific tag."""
+
+    if limit < 1:
+        limit = 5
+
+    if limit > 20:
+        limit = 20
+
+    cache_key = make_cache_key(
+        "book:top_by_tag",
+        {
+            "tag": tag,
+            "limit": limit
+        }
+    )
+
+    cached_books = get_json(cache_key)
+
+    if cached_books is not None:
+        return cached_books
+
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+
+        query = """
+                SELECT b.work_key,
+                       b.title,
+                       b.tags,
+                       b.publish_date,
+                       b.rating,
+                       b.cover_id,
+                       COALESCE(
+                           ARRAY_AGG(a.author_name)
+                           FILTER (WHERE a.author_name IS NOT NULL),
+                           ARRAY[]::text[]
+                       ) AS authors
+
+                FROM books b
+
+                         LEFT JOIN book_authors ba
+                               ON b.work_key = ba.work_key
+
+                         LEFT JOIN authors a
+                               ON ba.author_key = a.author_key
+
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM unnest(COALESCE(b.tags, ARRAY[]::text[])) AS book_tag
+                    WHERE BTRIM(book_tag) ILIKE %s
+                )
+
+                GROUP BY b.work_key,
+                         b.title,
+                         b.tags,
+                         b.publish_date,
+                         b.rating,
+                         b.cover_id
+
+                ORDER BY b.rating DESC NULLS LAST,
+                         b.title ASC
+
+                LIMIT %s
+                """
+
+        cursor.execute(
+            query,
+            (
+                tag.strip(),
+                limit
+            )
+        )
+
+        books = cursor.fetchall()
+
+        set_json(
+            cache_key,
+            books,
+            ttl_seconds=BOOK_TAG_CACHE_TTL_SECONDS
         )
 
         return books

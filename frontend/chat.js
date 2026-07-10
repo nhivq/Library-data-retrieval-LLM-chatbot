@@ -629,13 +629,69 @@ function buildBookTags(tags) {
   row.className = 'book-tag-row';
 
   tags.slice(0, 4).forEach((tag) => {
-    const pill = document.createElement('span');
+    const pill = document.createElement('button');
+    pill.type = 'button';
     pill.className = 'book-tag-pill';
     pill.textContent = tag;
+    pill.title = `Find highly rated ${tag} books`;
+    pill.addEventListener('click', () => showTopRatedBooksByTag(tag));
     row.appendChild(pill);
   });
 
   return row;
+}
+
+async function showTopRatedBooksByTag(tag) {
+  appendMessage('user', `Show highly rated books tagged "${tag}"`);
+
+  const thinkingRow = appendThinking();
+  const stopTimer = startLiveTimer(thinkingRow);
+
+  try {
+    const response = await authFetch(
+      `${API_BASE}/books/top-rated-by-tag?tag=${encodeURIComponent(tag)}&limit=5`
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const books = await response.json();
+
+    stopTimer();
+    await replaceWithTagResults(thinkingRow, tag, books);
+
+  } catch (error) {
+    console.log('Could not load books by tag:', error);
+    stopTimer();
+    replaceWithError(thinkingRow, 'Could not load books with this tag.');
+  }
+}
+
+async function replaceWithTagResults(row, tag, books) {
+  row.classList.remove('thinking');
+
+  const bubble = row.querySelector('.msg-bubble');
+  bubble.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'markdown';
+
+  if (!books.length) {
+    header.textContent = `Sorry, there aren't any books with the same tag: ${tag}.`;
+    bubble.appendChild(header);
+    scrollToBottom();
+    return;
+  }
+
+  header.textContent = `Here are the 5 most highly rated books tagged "${tag}".`;
+  bubble.appendChild(header);
+
+  books.forEach((book) => {
+    bubble.appendChild(buildBookResultCard(book));
+  });
+
+  scrollToBottom();
 }
 
 function buildBookActions(book) {
