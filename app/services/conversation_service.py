@@ -159,11 +159,12 @@ def get_all_conversations(
 
     try:
 
-        # Get each conversation with its first user message,
-        # so the frontend can show a readable chat title.
+        # The first user message becomes the sidebar title.
+        # The last non-system message time controls ordering and subtitle.
         query = """
             SELECT c.*,
-                   first_user_message.content AS first_message
+                   first_user_message.content AS first_message,
+                   last_message.created_at AS last_message_at
 
             FROM conversations c
 
@@ -177,8 +178,19 @@ def get_all_conversations(
                      ) AS first_user_message
                        ON TRUE
 
+                     LEFT JOIN LATERAL (
+                         SELECT m.created_at
+                         FROM messages m
+                         WHERE m.conversation_id = c.id
+                           AND m.role != 'system'
+                         ORDER BY m.id DESC
+                         LIMIT 1
+                     ) AS last_message
+                       ON TRUE
+
             WHERE c.user_id = %s
-            ORDER BY c.id;
+            ORDER BY COALESCE(last_message.created_at, c.created_at) DESC,
+                     c.id DESC;
             """
 
         cursor.execute(query, (user_id,))

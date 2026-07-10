@@ -41,7 +41,9 @@ async function fetchConversations(){
     conversationCache.unshift(optimisticActive);
   }
 
-  renderBackendConversations(conversationCache);
+  renderBackendConversations(
+    sortConversationsByRecent(conversationCache)
+  );
 }
 
 function formatSessionLabel(index) {
@@ -63,13 +65,49 @@ function formatConversationLabel(conv, index) {
     : firstMessage;
 }
 
-function shortSessionId(sessionId) {
-  return sessionId.length > 12 ? `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}` : sessionId;
+function formatConversationTime(conv) {
+  const value = conv.last_message_at || conv.created_at;
+
+  if(!value){
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if(Number.isNaN(date.getTime())){
+    return '';
+  }
+
+  const now = new Date();
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  if(isToday){
+    return `Today, ${date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    })}`;
+  }
+
+  return date.toLocaleDateString('en-GB');
+}
+
+function sortConversationsByRecent(convs) {
+  return [...convs].sort((a, b) => {
+    const aTime = new Date(a.last_message_at || a.created_at || 0).getTime();
+    const bTime = new Date(b.last_message_at || b.created_at || 0).getTime();
+
+    return bTime - aTime;
+  });
 }
 
 const ConvHistory = {
 
   addMessage(userText, aiText) {
+    touchActiveConversation();
+
     appendCachedConversationMessage(
       currentSessionId,
       {
@@ -117,7 +155,9 @@ const ConvHistory = {
       sessionId,
       []
     );
-    renderBackendConversations(conversationCache);
+    renderBackendConversations(
+      sortConversationsByRecent(conversationCache)
+    );
 
   },
 
@@ -128,6 +168,20 @@ const ConvHistory = {
     loadConversationFromBackend(sessionId);
   }
 };
+
+function touchActiveConversation(){
+  const existing = conversationCache.find(
+    conv => conv.session_id === currentSessionId
+  );
+
+  if(existing){
+    existing.last_message_at = new Date().toISOString();
+
+    renderBackendConversations(
+      sortConversationsByRecent(conversationCache)
+    );
+  }
+}
 
 // ── Render Conversation List ──────────────────────────────────
 function renderBackendConversations(convs){
@@ -151,7 +205,7 @@ function renderBackendConversations(convs){
   item.innerHTML=`
   <span class="conv-item-text">
     <span class="conv-item-label">${escapeHtml(formatConversationLabel(conv, index))}</span>
-    <span class="conv-item-time">${escapeHtml(shortSessionId(conv.session_id))}</span>
+    <span class="conv-item-time">${escapeHtml(formatConversationTime(conv))}</span>
   </span>
   <button class="conv-delete" title="Delete conversation">×</button>
   `;
@@ -182,15 +236,20 @@ function upsertActiveConversation(firstMessage){
     if(!existing.first_message){
       existing.first_message = firstMessage;
     }
+    existing.last_message_at = new Date().toISOString();
   }
   else{
     conversationCache.unshift({
       session_id: currentSessionId,
-      first_message: firstMessage
+      first_message: firstMessage,
+      created_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString()
     });
   }
 
-  renderBackendConversations(conversationCache);
+  renderBackendConversations(
+    sortConversationsByRecent(conversationCache)
+  );
 }
 
 async function deleteConversation(sessionId, item = null){
@@ -218,7 +277,9 @@ async function deleteConversation(sessionId, item = null){
       ConvHistory.newConversation();
       showWelcome();
     } else {
-      renderBackendConversations(conversationCache);
+      renderBackendConversations(
+        sortConversationsByRecent(conversationCache)
+      );
     }
 
   }
@@ -284,7 +345,9 @@ async function loadConversationFromBackend(sessionId){
     loadingConversationId = sessionId;
  }
 
- renderBackendConversations(conversationCache);
+ renderBackendConversations(
+    sortConversationsByRecent(conversationCache)
+ );
 
  try {
 
@@ -315,7 +378,9 @@ async function loadConversationFromBackend(sessionId){
  finally{
     if(loadingConversationId === sessionId){
       loadingConversationId = null;
-      renderBackendConversations(conversationCache);
+      renderBackendConversations(
+        sortConversationsByRecent(conversationCache)
+      );
     }
  }
 }
