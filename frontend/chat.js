@@ -71,6 +71,9 @@ async function handleSend(messageOverride = null) {
   setWelcomeMode(false);
 
   appendMessage('user', text);
+  if (typeof ConvHistory !== 'undefined' && ConvHistory.addUserMessage) {
+    ConvHistory.addUserMessage(text);
+  }
   const thinkingRow = appendThinking();
   const stopTimer   = startLiveTimer(thinkingRow);
 

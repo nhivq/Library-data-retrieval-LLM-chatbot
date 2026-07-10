@@ -238,7 +238,17 @@ html, body {
   gap: 8px;
 }
 .conv-item:hover    { background: #f5c8d8; transform: translateY(-1px); }
-.conv-item.active   { background: #f5c0d8; border-color: var(--accent); }
+.conv-item.active,
+.conv-item.active:hover {
+  background: #f5c0d8;
+  border-color: var(--accent);
+  transform: none;
+}
+
+.conv-item.loading .conv-item-time::after {
+  content: " loading";
+  color: var(--accent);
+}
 
 .conv-item-text {
   min-width: 0;

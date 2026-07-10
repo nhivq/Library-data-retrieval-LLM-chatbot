@@ -9,6 +9,9 @@
 // Stored in sessionStorage as an array of conversation objects:
 // [{ id, label, createdAt, messages: [{role, text}] }, ...]
 
+let conversationCache = [];
+let loadingConversationId = null;
+
 async function fetchConversations(){
 
   const res = await authFetch(
@@ -23,9 +26,21 @@ async function fetchConversations(){
   }
 
   const data = await res.json();
+  const optimisticActive = conversationCache.find(
+    conv => conv.session_id === currentSessionId
+  );
 
+  conversationCache = data;
 
-  renderBackendConversations(data);
+  if (
+    optimisticActive &&
+    optimisticActive.first_message &&
+    !conversationCache.some(conv => conv.session_id === currentSessionId)
+  ) {
+    conversationCache.unshift(optimisticActive);
+  }
+
+  renderBackendConversations(conversationCache);
 }
 
 function formatSessionLabel(index) {
@@ -63,13 +78,26 @@ const ConvHistory = {
 
   },
 
+  addUserMessage(userText) {
+
+    upsertActiveConversation(userText);
+
+    setTimeout(
+      fetchConversations,
+      350
+    );
+
+  },
+
   newConversation() {
 
     const sessionId = crypto.randomUUID();
 
     currentSessionId = sessionId;
+    loadingConversationId = null;
 
     loadConversation([]);
+    renderBackendConversations(conversationCache);
 
   },
 
@@ -88,12 +116,17 @@ function renderBackendConversations(convs){
 
  list.innerHTML="";
 
+  if(!convs.length){
+    list.innerHTML = '<p class="sidebar-empty">No conversations yet.</p>';
+    return;
+  }
 
   convs.forEach((conv, index)=>{
 
   const item = document.createElement("div");
 
   item.className="conv-item";
+  item.dataset.sessionId = conv.session_id;
 
   item.innerHTML=`
   <span class="conv-item-text">
@@ -103,8 +136,7 @@ function renderBackendConversations(convs){
   <button class="conv-delete" title="Delete conversation">×</button>
   `;
   item.onclick=()=>{
-     currentSessionId = conv.session_id;
-     loadConversationFromBackend(conv.session_id);
+     ConvHistory.switchTo(conv.session_id);
   };
   item.querySelector('.conv-delete').addEventListener('click', (event) => {
      event.stopPropagation();
@@ -113,13 +145,41 @@ function renderBackendConversations(convs){
   if (conv.session_id === currentSessionId) {
     item.classList.add('active');
   }
+  if (conv.session_id === loadingConversationId) {
+    item.classList.add('loading');
+  }
   list.appendChild(item);
   });
+}
+
+function upsertActiveConversation(firstMessage){
+
+  const existing = conversationCache.find(
+    conv => conv.session_id === currentSessionId
+  );
+
+  if(existing){
+    if(!existing.first_message){
+      existing.first_message = firstMessage;
+    }
+  }
+  else{
+    conversationCache.unshift({
+      session_id: currentSessionId,
+      first_message: firstMessage
+    });
+  }
+
+  renderBackendConversations(conversationCache);
 }
 
 async function deleteConversation(sessionId, item = null){
 
   try{
+    conversationCache = conversationCache.filter(
+      conv => conv.session_id !== sessionId
+    );
+
     if (item) {
       item.remove();
     }
@@ -137,6 +197,8 @@ async function deleteConversation(sessionId, item = null){
     if(sessionId === currentSessionId){
       ConvHistory.newConversation();
       showWelcome();
+    } else {
+      renderBackendConversations(conversationCache);
     }
 
   }
@@ -159,6 +221,7 @@ async function clearConversations(){
   }
 
   list.innerHTML = '<p class="sidebar-empty">No conversations yet.</p>';
+  conversationCache = [];
   ConvHistory.newConversation();
   showWelcome();
 
@@ -190,6 +253,10 @@ async function clearConversations(){
 // ── Loading conversation ──────────────────────────────────────
 async function loadConversationFromBackend(sessionId){
 
+ loadingConversationId = sessionId;
+ currentSessionId = sessionId;
+ renderBackendConversations(conversationCache);
+
  try {
 
     const res = await authFetch(
@@ -201,11 +268,21 @@ async function loadConversationFromBackend(sessionId){
 
     const messages = await res.json();
 
+    if(sessionId !== currentSessionId){
+      return;
+    }
+
     loadConversation(messages);
 
  }
  catch(err){
     console.error(err);
+ }
+ finally{
+    if(loadingConversationId === sessionId){
+      loadingConversationId = null;
+      renderBackendConversations(conversationCache);
+    }
  }
 }
 
