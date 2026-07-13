@@ -23,7 +23,8 @@ async def chat(
             request.session_id
             or
             "web-session",
-            user["user_id"]
+            user["user_id"],
+            request.edited_message_id
         ),
         media_type="text/event-stream"
     )

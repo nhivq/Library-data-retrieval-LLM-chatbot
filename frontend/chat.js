@@ -78,85 +78,11 @@ async function handleSend(messageOverride = null) {
   const stopTimer   = startLiveTimer(thinkingRow);
 
   try {
-    const response = await authFetch(`${API_BASE}/chat`,
-  {
-    method: 'POST',
-
-    headers: {
-      "Content-Type":"application/json",
-    },
-
-    body: JSON.stringify({
-      message: text,
-      session_id:currentSessionId
-    }),
-  }
-);
-
-if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let answer = '';
-    let progress = [];
-    let finalRendered = false;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        if (!finalRendered && (answer || progress.length > 0)) {
-          await replaceWithAnswer(thinkingRow, answer, progress);
-        }
-        stopTimer();
-        console.log("stream finished");
-        break;
-      }
-
-      buffer += decoder.decode(value, { stream: true });
-
-      let boundary;
-      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-        const event = buffer.slice(0, boundary).trim();
-        buffer = buffer.slice(boundary + 2);
-
-        if (!event.startsWith('data:')) continue;
-
-        try {
-          const data = JSON.parse(event.replace(/^data:\s*/, ''));
-
-          if (data.type === 'progress') {
-            progress = [{
-              step: 1,
-              tool: 'assistant',
-              summary: data.message,
-              duration_ms: 0,
-              status: 'running',
-            }];
-            updateThinkingProgress(thinkingRow, progress);
-          }
-
-          if (data.type === 'delta') {
-            answer += data.delta;
-            stopTimer();
-            renderStreamingAnswer(thinkingRow, answer, progress);
-          }
-
-          if (data.type === 'complete') {
-            if (data.progress) progress = data.progress;
-            updateThinkingProgress(thinkingRow, [{
-              summary: 'Formatting book cards',
-            }]);
-            await replaceWithAnswer(thinkingRow, answer, progress);
-            stopTimer();
-            finalRendered = true;
-            ConvHistory.addMessage(text, answer);
-          }
-        } catch (e) {
-          console.log('Invalid SSE:', event);
-        }
-      }
-    }
+    await streamChatResponse({
+      text,
+      thinkingRow,
+      stopTimer
+    });
 
   } catch (err) {
     console.error('Chat error:', err);
@@ -165,6 +91,99 @@ if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
   } finally {
     setInputDisabled(false);
     userInput.focus();
+  }
+}
+
+async function streamChatResponse({
+  text,
+  thinkingRow,
+  stopTimer,
+  editedMessageId = null
+}) {
+  const body = {
+    message: text,
+    session_id: currentSessionId
+  };
+
+  if (editedMessageId !== null) {
+    body.edited_message_id = editedMessageId;
+  }
+
+  const response = await authFetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: {
+      "Content-Type":"application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let answer = '';
+  let progress = [];
+  let finalRendered = false;
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      if (!finalRendered && (answer || progress.length > 0)) {
+        await replaceWithAnswer(thinkingRow, answer, progress);
+      }
+
+      stopTimer();
+      console.log("stream finished");
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary;
+    while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+      const event = buffer.slice(0, boundary).trim();
+      buffer = buffer.slice(boundary + 2);
+
+      if (!event.startsWith('data:')) continue;
+
+      try {
+        const data = JSON.parse(event.replace(/^data:\s*/, ''));
+
+        if (data.type === 'progress') {
+          progress = [{
+            step: 1,
+            tool: 'assistant',
+            summary: data.message,
+            duration_ms: 0,
+            status: 'running',
+          }];
+          updateThinkingProgress(thinkingRow, progress);
+        }
+
+        if (data.type === 'delta') {
+          answer += data.delta;
+          stopTimer();
+          renderStreamingAnswer(thinkingRow, answer, progress);
+        }
+
+        if (data.type === 'complete') {
+          if (data.progress) progress = data.progress;
+          updateThinkingProgress(thinkingRow, [{
+            summary: 'Formatting book cards',
+          }]);
+          await replaceWithAnswer(thinkingRow, answer, progress);
+          stopTimer();
+          finalRendered = true;
+          ConvHistory.addMessage(text, answer);
+        }
+      } catch (e) {
+        console.log('Invalid SSE:', event);
+      }
+    }
   }
 }
 
@@ -823,9 +842,12 @@ function formatDate(value) {
 }
 
 // ── Message builders ──────────────────────────────────────────
-function appendMessage(role, text) {
+function appendMessage(role, text, messageId = null) {
   const row = document.createElement('div');
   row.className = `msg-row ${role}`;
+  if (messageId !== null) {
+    row.dataset.messageId = messageId;
+  }
 
   const label = document.createElement('div');
   label.className = `msg-label label-${role === 'user' ? 'user' : 'ai'}`;
@@ -844,9 +866,125 @@ function appendMessage(role, text) {
 
   row.appendChild(label);
   row.appendChild(bubble);
+
+  if (role === 'user' && messageId !== null) {
+    row.appendChild(buildEditMessageButton(row));
+  }
+
   chatArea.appendChild(row);
   scrollToBottom();
   return row;
+}
+
+function buildEditMessageButton(row) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'message-edit-btn';
+  button.textContent = 'Edit';
+  button.addEventListener('click', () => startMessageEdit(row));
+
+  return button;
+}
+
+function startMessageEdit(row) {
+  const bubble = row.querySelector('.msg-bubble');
+  const originalText = bubble.textContent;
+
+  row.classList.add('editing');
+
+  const editor = document.createElement('textarea');
+  editor.className = 'message-edit-field';
+  editor.value = originalText;
+  editor.rows = 3;
+
+  const actions = document.createElement('div');
+  actions.className = 'message-edit-actions';
+
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'message-edit-save';
+  save.textContent = 'Save';
+
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'message-edit-cancel';
+  cancel.textContent = 'Cancel';
+
+  cancel.addEventListener('click', () => {
+    row.classList.remove('editing');
+    bubble.textContent = originalText;
+  });
+
+  save.addEventListener('click', () => submitMessageEdit(row, editor.value));
+
+  actions.appendChild(cancel);
+  actions.appendChild(save);
+
+  bubble.innerHTML = '';
+  bubble.appendChild(editor);
+  bubble.appendChild(actions);
+  editor.focus();
+}
+
+async function submitMessageEdit(row, value) {
+  const text = value.trim();
+  const messageId = Number(row.dataset.messageId);
+
+  if (!text || !messageId) {
+    return;
+  }
+
+  const bubble = row.querySelector('.msg-bubble');
+  bubble.textContent = text;
+  row.classList.remove('editing');
+
+  removeMessagesAfter(row);
+
+  setInputDisabled(true);
+
+  const thinkingRow = appendThinking();
+  const stopTimer = startLiveTimer(thinkingRow);
+
+  try {
+    await streamChatResponse({
+      text,
+      thinkingRow,
+      stopTimer,
+      editedMessageId: messageId
+    });
+
+    if (typeof ConvHistory !== 'undefined' && ConvHistory.replaceFromDom) {
+      ConvHistory.replaceFromDom(currentSessionId, collectCurrentMessages());
+    }
+
+  } catch (err) {
+    console.error('Edit message error:', err);
+    stopTimer();
+    replaceWithError(thinkingRow, 'Could not regenerate this message.');
+  } finally {
+    setInputDisabled(false);
+    userInput.focus();
+  }
+}
+
+function removeMessagesAfter(row) {
+  let next = row.nextElementSibling;
+
+  while (next) {
+    const current = next;
+    next = next.nextElementSibling;
+    current.remove();
+  }
+}
+
+function collectCurrentMessages() {
+  return [...chatArea.querySelectorAll('.msg-row')]
+    .filter(row => !row.classList.contains('thinking'))
+    .map(row => ({
+      id: row.dataset.messageId ? Number(row.dataset.messageId) : undefined,
+      role: row.classList.contains('user') ? 'user' : 'assistant',
+      content: row.querySelector('.msg-bubble')?.textContent || ''
+    }));
 }
 
 function appendThinking() {
@@ -900,13 +1038,14 @@ function loadConversation(messages) {
 
   setWelcomeMode(false);
 
-  messages.forEach(({ role, text, content }) => {
+  messages.forEach(({ id, role, text, content }) => {
 
     if (role === 'system') return;
 
     appendMessage(
       role,
-      text ?? content ?? ''
+      text ?? content ?? '',
+      id ?? null
     );
 
   });

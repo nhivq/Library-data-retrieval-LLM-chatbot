@@ -143,6 +143,15 @@ const ConvHistory = {
 
   },
 
+  replaceFromDom(sessionId, messages) {
+    conversationMessageCache.set(
+      sessionId,
+      messages
+    );
+
+    touchActiveConversation();
+  },
+
   newConversation() {
 
     const sessionId = crypto.randomUUID();

@@ -600,6 +600,72 @@ html, body {
   color: var(--text);
 }
 
+.message-edit-btn {
+  align-self: flex-end;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  opacity: 0;
+  transition: opacity .15s, border-color .15s, color .15s;
+}
+
+.msg-row.user:hover .message-edit-btn,
+.msg-row.user.editing .message-edit-btn {
+  opacity: 1;
+}
+
+.message-edit-btn:hover {
+  border-color: var(--border);
+  color: var(--accent);
+}
+
+.message-edit-field {
+  width: min(520px, 70vw);
+  min-height: 84px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff8fb;
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 1.5;
+  padding: 9px 11px;
+  resize: vertical;
+  outline: none;
+}
+
+.message-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.message-edit-save,
+.message-edit-cancel {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 4px 10px;
+}
+
+.message-edit-save {
+  background: var(--accent);
+  color: #fff;
+}
+
+.message-edit-cancel {
+  background: transparent;
+  color: var(--text-muted);
+}
+
 .msg-row.ai .msg-bubble {
   background: var(--ai-bg);
   border: 1px solid transparent;

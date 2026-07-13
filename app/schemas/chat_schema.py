@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
 
     message: str
     session_id: str | None = None
+    edited_message_id: int | None = None
 
 
 class ChatResponse(BaseModel):

@@ -289,8 +289,10 @@ def get_messages(
         # llm_client inserts the system message into the model context when
         # needed, so the user-facing history stays clean.
         query = """
-            SELECT m.role, 
-                m.content
+            SELECT m.id,
+                   m.role, 
+                   m.content,
+                   m.created_at
 
             FROM messages m
 
@@ -309,6 +311,83 @@ def get_messages(
         messages = cursor.fetchall()
 
         return [dict(row) for row in messages]
+
+    finally:
+
+        cursor.close()
+
+
+def edit_user_message(
+        session_id: str,
+        user_id: int,
+        message_id: int,
+        content: str,
+        conn
+):
+    """Edit a user message and remove later messages in that conversation."""
+
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+
+        cursor.execute(
+            """
+            SELECT m.id,
+                   m.conversation_id,
+                   m.role
+            FROM messages m
+            JOIN conversations c
+                 ON m.conversation_id = c.id
+            WHERE m.id = %s
+              AND c.session_id = %s
+              AND c.user_id = %s
+            """,
+            (
+                message_id,
+                session_id,
+                user_id
+            )
+        )
+
+        message = cursor.fetchone()
+
+        if not message or message["role"] != "user":
+            raise ValueError("Editable user message not found")
+
+        cursor.execute(
+            """
+            UPDATE messages
+            SET content = %s
+            WHERE id = %s
+            """,
+            (
+                content,
+                message_id
+            )
+        )
+
+        # Match ChatGPT-style editing: the edited turn becomes the new branch,
+        # so assistant/user messages that came after it are removed.
+        cursor.execute(
+            """
+            DELETE
+            FROM messages
+            WHERE conversation_id = %s
+              AND id > %s
+            """,
+            (
+                message["conversation_id"],
+                message_id
+            )
+        )
+
+        conn.commit()
+
+    except Exception:
+
+        conn.rollback()
+
+        raise
 
     finally:
 

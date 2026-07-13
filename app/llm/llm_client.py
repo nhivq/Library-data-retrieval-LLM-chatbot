@@ -6,7 +6,7 @@ import time
 from app.llm.tool_result_processor import process_tool_result
 from app.llm.setup import client
 from app.llm.tool_converter import mcp_tool_to_openrouter
-from app.services.conversation_service import initialize_conversation, get_messages, save_message
+from app.services.conversation_service import edit_user_message, initialize_conversation, get_messages, save_message
 from app.database.connection import get_connection
 from app.llm.prompts import SYSTEM_PROMPT, DEFAULT_QUESTION
 from app.llm.openrouter_client import call_llm
@@ -74,7 +74,8 @@ async def get_openrouter_tools():
 async def ask_agent_stream(
     question: str,
     session_id: str,
-    user_id: int
+    user_id: int,
+    edited_message_id: int | None = None
 ):
     """Stream an agent answer as Server-Sent Events.
 
@@ -122,7 +123,16 @@ async def ask_agent_stream(
                 },
             )
             start = time.perf_counter()
-            save_message(session_id, "user", question, user_id, conn)
+            if edited_message_id is not None:
+                edit_user_message(
+                    session_id,
+                    user_id,
+                    edited_message_id,
+                    question,
+                    conn
+                )
+            else:
+                save_message(session_id, "user", question, user_id, conn)
             logger.info(
                 "user message persisted",
                 extra={
@@ -133,7 +143,14 @@ async def ask_agent_stream(
                 },
             )
             start = time.perf_counter()
-            messages = get_messages(session_id, user_id, conn)
+            stored_messages = get_messages(session_id, user_id, conn)
+            messages = [
+                {
+                    "role": message["role"],
+                    "content": message["content"]
+                }
+                for message in stored_messages
+            ]
             # get_messages hides system messages from the UI. Add the prompt
             # back into the LLM context if it is not already present.
             if not any(m["role"] == "system" for m in messages):
