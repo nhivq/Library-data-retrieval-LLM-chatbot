@@ -131,8 +131,16 @@ async def ask_agent_stream(
                     question,
                     conn
                 )
+                user_message_id = edited_message_id
             else:
-                save_message(session_id, "user", question, user_id, conn)
+                user_message_id = save_message(session_id, "user", question, user_id, conn)
+            user_message_payload = json.dumps(
+                {
+                    "type": "user_message",
+                    "id": user_message_id
+                }
+            )
+            yield f"data: {user_message_payload}\n\n"
             logger.info(
                 "user message persisted",
                 extra={

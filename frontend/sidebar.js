@@ -152,6 +152,22 @@ const ConvHistory = {
     touchActiveConversation();
   },
 
+  attachLatestUserMessageId(sessionId, messageId) {
+    const cachedMessages = conversationMessageCache.get(sessionId);
+
+    if(!cachedMessages || !cachedMessages.length){
+      return;
+    }
+
+    const latestUserMessage = [...cachedMessages]
+      .reverse()
+      .find(message => message.role === 'user' && !message.id);
+
+    if(latestUserMessage){
+      latestUserMessage.id = messageId;
+    }
+  },
+
   newConversation() {
 
     const sessionId = crypto.randomUUID();

@@ -70,7 +70,7 @@ async function handleSend(messageOverride = null) {
 
   setWelcomeMode(false);
 
-  appendMessage('user', text);
+  const userRow = appendMessage('user', text);
   if (typeof ConvHistory !== 'undefined' && ConvHistory.addUserMessage) {
     ConvHistory.addUserMessage(text);
   }
@@ -81,7 +81,8 @@ async function handleSend(messageOverride = null) {
     await streamChatResponse({
       text,
       thinkingRow,
-      stopTimer
+      stopTimer,
+      userRow
     });
 
   } catch (err) {
@@ -98,6 +99,7 @@ async function streamChatResponse({
   text,
   thinkingRow,
   stopTimer,
+  userRow = null,
   editedMessageId = null
 }) {
   const body = {
@@ -162,6 +164,13 @@ async function streamChatResponse({
             status: 'running',
           }];
           updateThinkingProgress(thinkingRow, progress);
+        }
+
+        if (data.type === 'user_message' && userRow) {
+          attachEditableMessageId(userRow, data.id);
+          if (typeof ConvHistory !== 'undefined' && ConvHistory.attachLatestUserMessageId) {
+            ConvHistory.attachLatestUserMessageId(currentSessionId, data.id);
+          }
         }
 
         if (data.type === 'delta') {
@@ -884,6 +893,16 @@ function buildEditMessageButton(row) {
   button.addEventListener('click', () => startMessageEdit(row));
 
   return button;
+}
+
+function attachEditableMessageId(row, messageId) {
+  if (!messageId) return;
+
+  row.dataset.messageId = messageId;
+
+  if (!row.querySelector('.message-edit-btn')) {
+    row.appendChild(buildEditMessageButton(row));
+  }
 }
 
 function startMessageEdit(row) {
