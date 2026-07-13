@@ -1,9 +1,13 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.dependencies import get_current_admin_user
 from app.database.connection import get_db
 from app.services import analytics_service
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/admin",
@@ -26,7 +30,10 @@ def get_analytics(
 
     except Exception as e:
 
-        print(e)
+        logger.exception(
+            "admin analytics failed",
+            extra={"event": "admin_analytics_error", "error": str(e)},
+        )
 
         raise HTTPException(
             status_code=400,

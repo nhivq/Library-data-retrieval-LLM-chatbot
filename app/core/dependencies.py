@@ -1,9 +1,14 @@
+import logging
+
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from psycopg2.extras import RealDictCursor
 
 from app.database.connection import get_db
+from app.core.logging import bind_request_context
 from app.core.security import decode_access_token
+
+logger = logging.getLogger(__name__)
 
 
 security = HTTPBearer()
@@ -43,11 +48,20 @@ def get_current_user(
             user = cursor.fetchone()
 
             if not user:
+                logger.warning(
+                    "authentication failed",
+                    extra={"event": "auth_user_not_found", "user_id": user_id},
+                )
                 raise HTTPException(
                     status_code=401,
                     detail="User not found"
                 )
 
+            bind_request_context(user_id=user_id)
+            logger.info(
+                "authenticated user resolved",
+                extra={"event": "auth_user_resolved", "user_id": user_id},
+            )
             return dict(user)
 
         finally:
@@ -58,8 +72,11 @@ def get_current_user(
 
         raise
 
-    except Exception:
-
+    except Exception as exc:
+        logger.warning(
+            "invalid authentication token",
+            extra={"event": "auth_invalid_token", "error": str(exc)},
+        )
         raise HTTPException(
             status_code=401,
             detail="Invalid token"

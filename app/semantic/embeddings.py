@@ -41,6 +41,7 @@ EMBEDDING_DIMENSIONS = int(
 
 _embedding_model = None
 _openai_client = None
+logger = logging.getLogger(__name__)
 _logged_provider = False
 
 
@@ -164,13 +165,14 @@ def embed_text(text: str) -> list[float]:
     global _logged_provider
 
     if not _logged_provider:
-        print(
-            "Embedding provider:",
-            EMBEDDING_PROVIDER,
-            "model:",
-            EMBEDDING_MODEL_NAME,
-            "dimensions:",
-            EMBEDDING_DIMENSIONS
+        logger.info(
+            "embedding provider configured",
+            extra={
+                "event": "embedding_provider",
+                "provider": EMBEDDING_PROVIDER,
+                "model": EMBEDDING_MODEL_NAME,
+                "dimensions": EMBEDDING_DIMENSIONS,
+            },
         )
         _logged_provider = True
 

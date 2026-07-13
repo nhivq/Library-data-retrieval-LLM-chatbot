@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import time
 
 from app.llm.tool_result_processor import process_tool_result
@@ -9,6 +10,8 @@ from app.services.conversation_service import initialize_conversation, get_messa
 from app.database.connection import get_connection
 from app.llm.prompts import SYSTEM_PROMPT, DEFAULT_QUESTION
 from app.llm.openrouter_client import call_llm
+
+logger = logging.getLogger(__name__)
 
 # ---------- Helper Functions ----------
 def summarize_tool_result(data):
@@ -81,19 +84,25 @@ async def ask_agent_stream(
     the frontend.
     """
 
-    print("\n===== Stream START")
+    logger.info(
+        "agent stream started",
+        extra={"event": "agent_stream_start", "session_id": session_id, "user_id": user_id},
+    )
     yield 'data: {"type":"progress","message":"Starting"}\n\n'
     async with client:
         progress = []
         step_number = 1
         start = time.perf_counter()
         openrouter_tools = await get_openrouter_tools()
-        print(
-            "stream list_tools:",
-            round((time.perf_counter() - start) * 1000),
-            "ms",
-            "tools:",
-            len(openrouter_tools)
+        logger.info(
+            "tool schemas loaded",
+            extra={
+                "event": "tool_schemas_loaded",
+                "user_id": user_id,
+                "session_id": session_id,
+                "tool_count": len(openrouter_tools),
+                "latency_ms": round((time.perf_counter() - start) * 1000),
+            },
         )
         conn = get_connection()
         try:
@@ -103,17 +112,25 @@ async def ask_agent_stream(
             # Ensure the conversation exists and has the current system prompt
             # before saving this turn's user message.
             initialize_conversation(session_id, formatted_prompt, user_id, conn)
-            print(
-                "stream initialize_conversation:",
-                round((time.perf_counter() - start) * 1000),
-                "ms"
+            logger.info(
+                "conversation initialized",
+                extra={
+                    "event": "conversation_init",
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "latency_ms": round((time.perf_counter() - start) * 1000),
+                },
             )
             start = time.perf_counter()
             save_message(session_id, "user", question, user_id, conn)
-            print(
-                "stream save_message user:",
-                round((time.perf_counter() - start) * 1000),
-                "ms"
+            logger.info(
+                "user message persisted",
+                extra={
+                    "event": "user_message_persisted",
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "latency_ms": round((time.perf_counter() - start) * 1000),
+                },
             )
             start = time.perf_counter()
             messages = get_messages(session_id, user_id, conn)
@@ -127,14 +144,15 @@ async def ask_agent_stream(
                         "content": formatted_prompt
                     }
                 )
-            print(
-                "stream get_messages:",
-                round((time.perf_counter() - start) * 1000),
-                "ms",
-                "message count:",
-                len(messages),
-                "chars:",
-                len(json.dumps(messages))
+            logger.info(
+                "conversation history loaded",
+                extra={
+                    "event": "conversation_history_loaded",
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "message_count": len(messages),
+                    "latency_ms": round((time.perf_counter() - start) * 1000),
+                },
             )
             # Prevent infinite tool loops if the model keeps requesting tools
             # without producing a final answer.
@@ -150,7 +168,15 @@ async def ask_agent_stream(
                     tools=openrouter_tools,
                     stream=True
                 )
-                print("stream call_llm started:", iteration)
+                logger.info(
+                    "LLM request started",
+                    extra={
+                        "event": "llm_request_started",
+                        "session_id": session_id,
+                        "user_id": user_id,
+                        "iteration": iteration,
+                    },
+                )
                 # Initialize an accumulator to assemble stream chunks of tool calls.
                 # This is necessary because arguments and names are received piece-by-piece.
                 tool_calls_accumulator = {}
@@ -175,7 +201,15 @@ async def ask_agent_stream(
                     # CASE 2: tool call response
                     # ----------------------------
                     if delta.tool_calls:
-                        print("stream tool_calls chunk received:", iteration)
+                        logger.info(
+                            "LLM emitted tool calls",
+                            extra={
+                                "event": "llm_tool_calls",
+                                "session_id": session_id,
+                                "user_id": user_id,
+                                "iteration": iteration,
+                            },
+                        )
                         # Emit progress to let the frontend know a tool execution has started.
                         yield 'data: {"type":"progress","message":"Using tool"}\n\n'
                         for tc in delta.tool_calls:
@@ -200,7 +234,15 @@ async def ask_agent_stream(
                 # If no tool calls were requested during the stream, this is the final assistant response.
                 # We append it to the in-memory context and break out of the ReAct loop.
                 if not tool_calls_accumulator:
-                    print("stream no tool calls; final answer ready:", len(assistant_text))
+                    logger.info(
+                        "LLM completed without tool calls",
+                        extra={
+                            "event": "llm_final_response",
+                            "session_id": session_id,
+                            "user_id": user_id,
+                            "response_chars": len(assistant_text),
+                        },
+                    )
                     messages.append(
                         {
                             "role": "assistant",
@@ -214,7 +256,15 @@ async def ask_agent_stream(
                 for idx, tc_data in sorted(tool_calls_accumulator.items()):
                     tool_name = tc_data["name"]
                     arguments = json.loads(tc_data["arguments"])
-                    print("stream executing tool:", tool_name)
+                    logger.info(
+                        "executing tool",
+                        extra={
+                            "event": "tool_execute",
+                            "session_id": session_id,
+                            "user_id": user_id,
+                            "tool_name": tool_name,
+                        },
+                    )
                     # Inject authenticated user_id server-side. The model never
                     # gets to choose which user's bookmarks/history to mutate.
                     if tool_name in [
@@ -264,12 +314,26 @@ async def ask_agent_stream(
                                 tool_name,
                                 tool_text
                             )
-                            print("Tool output chars:", len(tool_text))
-                            print("\nParsed Tool Data:")
-                            print(type(tool_data))
-                            print(tool_data)
+                            logger.info(
+                                "tool result parsed",
+                                extra={
+                                    "event": "tool_result_parsed",
+                                    "session_id": session_id,
+                                    "user_id": user_id,
+                                    "tool_name": tool_name,
+                                    "response_chars": len(tool_text),
+                                },
+                            )
                         except Exception:
-                            print("\nTool result is not JSON.")
+                            logger.warning(
+                                "tool result was not JSON",
+                                extra={
+                                    "event": "tool_result_non_json",
+                                    "session_id": session_id,
+                                    "user_id": user_id,
+                                    "tool_name": tool_name,
+                                },
+                            )
                             compact_text = tool_text
                         progress.append(
                             {
@@ -310,8 +374,16 @@ async def ask_agent_stream(
                             }
                         )
                     except Exception as e:
-                        print("\nTool Error:")
-                        print(e)
+                        logger.exception(
+                            "tool execution failed",
+                            extra={
+                                "event": "tool_execution_error",
+                                "session_id": session_id,
+                                "user_id": user_id,
+                                "tool_name": tool_name,
+                                "error": str(e),
+                            },
+                        )
                         messages.append(
                             {
                                 "role": "user",
@@ -337,14 +409,23 @@ async def ask_agent_stream(
                 )
         
         except Exception as e:
-            print("STREAM ERROR:")
-            print(type(e))
-            print(e)
+            logger.exception(
+                "agent stream failed",
+                extra={
+                    "event": "agent_stream_error",
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "error": str(e),
+                },
+            )
             raise
         
         finally:
             conn.close()
-            print("===== ask_agent_stream END =====\n")
+            logger.info(
+                "agent stream ended",
+                extra={"event": "agent_stream_end", "session_id": session_id, "user_id": user_id},
+            )
 
 
 # Local Test
@@ -357,10 +438,10 @@ async def main(
     # This is only for local testing from terminal.
     result = await ask_agent_stream(question, session_id, user_id=0)
 
-    print("\n=== FINAL ANSWER ===\n")
-    print(result["answer"])
-    print("\n=== PROGRESS ===\n")
-    print(result.get("progress", []))
+    logger.info(
+        "local test completed",
+        extra={"event": "local_test_complete", "answer_length": len(result["answer"])}
+    )
 
 
 if __name__ == "__main__":

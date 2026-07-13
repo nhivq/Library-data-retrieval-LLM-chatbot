@@ -1,3 +1,4 @@
+import logging
 import time
 from psycopg2.extras import RealDictCursor
 
@@ -13,6 +14,9 @@ access their own conversations.
 Functions receive an active database connection and manage their own
 cursor lifecycle. Errors rollback transactions before being propagated.
 """
+
+logger = logging.getLogger(__name__)
+
 
 def get_or_create_conversation(
         session_id: str,
@@ -31,9 +35,9 @@ def get_or_create_conversation(
         SELECT current_database(), current_schema()
         """)
 
-        print(
-            "DB INFO:",
-            cursor.fetchone()
+        logger.debug(
+            "database context resolved",
+            extra={"event": "db_context", "session_id": session_id, "user_id": user_id},
         )
 
         # session_id alone is not trusted; user_id is included so users can
@@ -67,10 +71,14 @@ def get_or_create_conversation(
             (session_id, user_id)
         )
 
-        print(
-            "conversation insert:",
-            round((time.perf_counter() - start) * 1000),
-            "ms"
+        logger.info(
+            "conversation created",
+            extra={
+                "event": "conversation_create",
+                "session_id": session_id,
+                "user_id": user_id,
+                "latency_ms": round((time.perf_counter() - start) * 1000),
+            },
         )
 
         new_result = cursor.fetchone()
@@ -80,10 +88,14 @@ def get_or_create_conversation(
         # Commit the insert so the new conversation is persisted
         conn.commit()
 
-        print(
-            "conversation commit:",
-            round((time.perf_counter() - start) * 1000),
-            "ms"
+        logger.info(
+            "conversation commit completed",
+            extra={
+                "event": "conversation_commit",
+                "session_id": session_id,
+                "user_id": user_id,
+                "latency_ms": round((time.perf_counter() - start) * 1000),
+            },
         )
 
         return new_result["id"]
@@ -217,10 +229,14 @@ def save_message(
 
     conversation_id = get_or_create_conversation(session_id, user_id, conn)
 
-    print(
-    "get_or_create_conversation:",
-    round((time.perf_counter()-start)*1000),
-    "ms"
+    logger.info(
+        "conversation lookup completed",
+        extra={
+            "event": "conversation_lookup",
+            "session_id": session_id,
+            "user_id": user_id,
+            "latency_ms": round((time.perf_counter() - start) * 1000),
+        },
     )
 
     cursor = conn.cursor(cursor_factory=RealDictCursor)

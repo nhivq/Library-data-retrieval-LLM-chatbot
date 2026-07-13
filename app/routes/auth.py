@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -16,6 +18,8 @@ from app.core.security import create_access_token, decode_refresh_token, create_
 from app.core.config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, FRONTEND_URL
 from app.services import oauth_service
 
+
+logger = logging.getLogger(__name__)
 
 router=APIRouter(
     prefix="/auth",
@@ -146,18 +150,23 @@ async def google_callback(
 ):
     """Handle Google's OAuth callback and redirect the frontend with tokens."""
     
-    print("SESSION:", request.session)
-    print("STATE:", request.query_params.get("state"))
+    logger.info(
+        "Google OAuth callback received",
+        extra={
+            "event": "google_oauth_callback",
+            "session_id": request.session.get("state"),
+            "state": request.query_params.get("state"),
+        },
+    )
 
     token = await oauth.google.authorize_access_token(request)
 
-    print("GOOGLE TOKEN:")
-    print(token)
-
     google_user = token["userinfo"]
 
-    print("GOOGLE USER:")
-    print(google_user)
+    logger.info(
+        "Google user profile resolved",
+        extra={"event": "google_user_profile", "user_email": google_user.get("email")},
+    )
 
     if not google_user:
         raise HTTPException(
@@ -170,8 +179,10 @@ async def google_callback(
         conn
     )
 
-    print("LOCAL USER:")
-    print(user)
+    logger.info(
+        "local user account resolved",
+        extra={"event": "oauth_local_user", "user_id": user.get("user_id")},
+    )
 
     access_token = create_access_token(
         {

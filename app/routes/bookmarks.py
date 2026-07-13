@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -7,6 +9,8 @@ from app.database.connection import get_db
 from app.schemas.bookmark_schemas import Bookmark
 from app.services import bookmark_service
 from app.core.dependencies import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router=APIRouter(
     prefix="/bookmarks",
@@ -52,7 +56,10 @@ def get_bookmark(
         )
 
     except Exception as e:
-        print(e)
+        logger.exception(
+            "bookmark lookup failed",
+            extra={"event": "bookmark_lookup_error", "error": str(e)},
+        )
 
         raise HTTPException(
             status_code=404,

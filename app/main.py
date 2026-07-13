@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from app.core.logging import bind_request_context, clear_request_context, make_request_id, setup_logging
 from app.routes.books import router as books_router
 from app.routes.bookmarks import router as bookmarks_router
 from app.routes.authors import router as authors_router
@@ -11,7 +14,31 @@ from app.routes.conversation import router as conversation_router
 from app.routes.admin import router as admin_router
 from app.core.config import SESSION_SECRET_KEY
 
+setup_logging()
+
 app = FastAPI()
+
+logger = logging.getLogger(__name__)
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or make_request_id()
+    clear_request_context()
+    bind_request_context(request_id=request_id, path=request.url.path, method=request.method)
+
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "request completed",
+        extra={
+            "event": "request_completed",
+            "status_code": response.status_code,
+            "path": request.url.path,
+            "method": request.method,
+        },
+    )
+    return response
 
 
 # SessionMiddleware is required by the Google OAuth flow because Authlib stores
