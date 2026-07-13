@@ -15,6 +15,8 @@ def test_save_bookmark_commits_insert():
     )
 
     assert result == {"message": "Bookmark saved"}
+    # Bookmark writes must always include the authenticated user_id so one user
+    # cannot create or affect another user's saved books.
     assert cursor.executed[0][1] == (7, "/works/OL1W")
     assert conn.commits == 1
     assert cursor.closed
@@ -31,6 +33,7 @@ def test_save_bookmark_rolls_back_on_error():
             conn=conn,
         )
 
+    # Failed writes should leave the connection clean for the next request.
     assert conn.rollbacks == 1
     assert cursor.closed
 
@@ -56,6 +59,8 @@ def test_delete_bookmark_scopes_delete_to_user_and_work_key():
     )
 
     assert result == {"message": "Bookmark deleted"}
+    # Deletion is scoped by both fields. This protects users who bookmark the
+    # same book from deleting each other's rows.
     assert cursor.executed[0][1] == (7, "/works/OL1W")
     assert conn.commits == 1
     assert cursor.closed

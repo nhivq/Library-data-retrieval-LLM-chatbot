@@ -7,6 +7,8 @@ from tests.conftest import FakeConnection, FakeCursor
 def test_register_user_hashes_password_and_commits(monkeypatch):
     cursor = FakeCursor()
     conn = FakeConnection([cursor])
+    # Replace bcrypt with a predictable value so this test focuses on service
+    # behavior: storing a hash, not the plain password.
     monkeypatch.setattr(auth_service, "hash_password", lambda password: f"hashed:{password}")
 
     result = auth_service.register_user(
@@ -43,6 +45,8 @@ def test_login_user_returns_access_and_refresh_tokens(monkeypatch):
         ]
     )
     conn = FakeConnection([cursor])
+    # Token creation and password checking have their own responsibilities.
+    # Here they are mocked so we can verify the login flow around them.
     monkeypatch.setattr(auth_service, "verify_password", lambda plain, hashed: True)
     monkeypatch.setattr(auth_service, "create_access_token", lambda data: f"access:{data['sub']}")
     monkeypatch.setattr(auth_service, "create_refresh_token", lambda data: f"refresh:{data['sub']}")

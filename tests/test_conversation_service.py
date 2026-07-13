@@ -13,6 +13,8 @@ def test_get_or_create_conversation_returns_existing_id_without_commit():
     )
 
     assert result == 42
+    # Existing conversations are read-only in this path, so no transaction
+    # commit should be needed.
     assert len(cursor.executed) == 2
     assert cursor.executed[1][1] == ("session-1", 7)
     assert conn.commits == 0
@@ -30,12 +32,17 @@ def test_get_or_create_conversation_inserts_and_commits_when_missing():
     )
 
     assert result == 99
+    # The third statement is the INSERT. The first two are the debug DB-context
+    # query and the lookup for an existing conversation.
     assert cursor.executed[2][1] == ("session-1", 7)
     assert conn.commits == 1
     assert cursor.closed
 
 
 def test_initialize_conversation_saves_system_message_only_when_empty(monkeypatch):
+    # The system prompt should be stored once at the beginning of a chat. If it
+    # were saved every time, the model context and database history would grow
+    # with duplicate instructions.
     monkeypatch.setattr(conversation_service, "get_or_create_conversation", lambda *args, **kwargs: 42)
     saved_messages = []
     monkeypatch.setattr(
@@ -88,6 +95,8 @@ def test_get_messages_returns_plain_dicts():
         conn=conn,
     )
 
+    # The frontend and LLM client expect ordinary dictionaries, not cursor row
+    # objects tied to psycopg2 internals.
     assert result == [{"role": "user", "content": "hello"}]
     assert cursor.executed[0][1] == ("session-1", 7)
     assert cursor.closed

@@ -33,6 +33,8 @@ def test_build_book_embedding_text_joins_available_metadata():
 
 
 def test_get_books_returns_cached_value_without_database(monkeypatch, sample_book):
+    # A cache hit should return immediately. This protects Redis from becoming
+    # only an extra step while the app still queries Postgres unnecessarily.
     monkeypatch.setattr(book_service, "get_json", lambda key: [sample_book])
 
     assert book_service.get_books(limit=10, conn=None) == [sample_book]
@@ -43,6 +45,8 @@ def test_get_books_clamps_limit_and_writes_cache(monkeypatch, sample_book):
     conn = FakeConnection([cursor])
     writes = []
     monkeypatch.setattr(book_service, "get_json", lambda key: None)
+    # Capture cache writes so the test can prove the service stores successful
+    # database results for future requests.
     monkeypatch.setattr(
         book_service,
         "set_json",
@@ -77,6 +81,8 @@ def test_search_books_builds_expected_filters_and_pagination(monkeypatch, sample
 
     query, params = cursor.executed[0]
     assert result == [sample_book]
+    # These checks guard the search contract without snapshotting the whole SQL
+    # string, which would be noisy and fragile for harmless formatting changes.
     assert "b.title ~* %s" in query
     assert "filter_a.author_name ILIKE %s" in query
     assert params == [r"\mDune\M", "%Herbert%", 4.0, "%science%", 1960, 5, 5]
@@ -97,6 +103,8 @@ def test_recommend_books_uses_prepared_concepts_and_clamped_limit(monkeypatch, s
 
     assert result == [sample_book]
     prepared_groups, concept_count, limit = cursor.executed[0][1]
+    # Recommendation groups are the bridge between natural-language intent and
+    # SQL scoring. If this shape changes accidentally, ranking quality changes.
     assert prepared_groups.adapted == [
         {"group_id": 1, "terms": ["space", "politics"]},
         {"group_id": 2, "terms": ["desert", "survival"]},
@@ -110,6 +118,8 @@ def test_semantic_search_formats_embedding_and_clamps_limit(monkeypatch, sample_
     conn = FakeConnection([cursor])
     monkeypatch.setattr(book_service, "get_json", lambda key: None)
     monkeypatch.setattr(book_service, "set_json", lambda key, value, ttl_seconds: None)
+    # Do not load a real embedding model in unit tests. A tiny fixed vector is
+    # enough to prove the service passes the vector literal into pgvector SQL.
     monkeypatch.setattr(book_service, "embed_text", lambda query: [0.1, 0.2])
     monkeypatch.setattr(book_service, "format_vector", lambda embedding: "[0.1,0.2]")
 

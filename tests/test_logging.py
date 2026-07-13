@@ -6,6 +6,8 @@ from app.core.logging import JsonFormatter, bind_request_context, clear_request_
 
 def test_json_formatter_includes_request_and_user_context():
     clear_request_context()
+    # Bind the values a real request middleware would attach, then confirm they
+    # appear on any log created during that request.
     bind_request_context(request_id="req-123", user_id=42)
 
     record = logging.LogRecord(
@@ -49,6 +51,8 @@ def test_json_formatter_preserves_custom_extra_fields():
     record.tool_count = 8
     record.iteration = 2
 
+    # Observability fields differ by code path. The formatter should keep new
+    # fields automatically instead of requiring a code change for each one.
     payload = json.loads(JsonFormatter().format(record))
 
     assert payload["event"] == "tool_schemas_loaded"

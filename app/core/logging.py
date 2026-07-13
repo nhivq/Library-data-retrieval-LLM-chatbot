@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 
 _request_context: ContextVar[dict] = ContextVar("request_context", default={})
 
+# Python's LogRecord contains many built-in fields such as pathname, process,
+# and thread. We exclude those so our JSON logs stay focused on fields that help
+# people understand what happened in the app.
 _RESERVED_LOG_RECORD_ATTRIBUTES = {
     "args",
     "asctime",
@@ -37,6 +40,9 @@ class ContextFilter(logging.Filter):
     """Attach request-scoped context values to every log record."""
 
     def filter(self, record):
+        # ContextVar stores values for the current request only. This lets logs
+        # from different users/requests keep their own request_id and user_id
+        # even when the server handles many requests at the same time.
         context = _request_context.get()
         for key, value in context.items():
             setattr(record, key, value)
@@ -62,6 +68,9 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
+        # Keep all custom logger.extra fields. This is important for
+        # observability because each code path may add its own useful facts,
+        # such as tool_count, iteration, message_count, or response_chars.
         for key, value in record.__dict__.items():
             if key not in _RESERVED_LOG_RECORD_ATTRIBUTES:
                 payload[key] = value
@@ -98,6 +107,9 @@ def setup_logging():
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
+    # Test runners and production servers often install handlers before the app
+    # starts. Reuse them so we do not duplicate log lines; just make their
+    # output structured and request-aware.
     if root_logger.handlers:
         for handler in root_logger.handlers:
             if not isinstance(handler.formatter, JsonFormatter):
