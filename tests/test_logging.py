@@ -31,3 +31,26 @@ def test_json_formatter_includes_request_and_user_context():
     assert payload["latency_ms"] == 12.5
 
     clear_request_context()
+
+
+def test_json_formatter_preserves_custom_extra_fields():
+    clear_request_context()
+
+    record = logging.LogRecord(
+        name="app.test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg="loaded",
+        args=(),
+        exc_info=None,
+    )
+    record.event = "tool_schemas_loaded"
+    record.tool_count = 8
+    record.iteration = 2
+
+    payload = json.loads(JsonFormatter().format(record))
+
+    assert payload["event"] == "tool_schemas_loaded"
+    assert payload["tool_count"] == 8
+    assert payload["iteration"] == 2

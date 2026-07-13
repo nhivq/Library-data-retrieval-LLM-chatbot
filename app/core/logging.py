@@ -7,6 +7,31 @@ from datetime import datetime, timezone
 
 _request_context: ContextVar[dict] = ContextVar("request_context", default={})
 
+_RESERVED_LOG_RECORD_ATTRIBUTES = {
+    "args",
+    "asctime",
+    "created",
+    "exc_info",
+    "exc_text",
+    "filename",
+    "funcName",
+    "levelname",
+    "levelno",
+    "lineno",
+    "module",
+    "msecs",
+    "message",
+    "msg",
+    "name",
+    "pathname",
+    "process",
+    "processName",
+    "relativeCreated",
+    "stack_info",
+    "thread",
+    "threadName",
+}
+
 
 class ContextFilter(logging.Filter):
     """Attach request-scoped context values to every log record."""
@@ -37,26 +62,9 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        for key in (
-            "request_id",
-            "user_id",
-            "event",
-            "latency_ms",
-            "duration_ms",
-            "operation",
-            "tool_name",
-            "model",
-            "stream",
-            "status",
-            "status_code",
-            "path",
-            "method",
-            "session_id",
-            "user_agent",
-            "error",
-        ):
-            if hasattr(record, key):
-                payload[key] = getattr(record, key)
+        for key, value in record.__dict__.items():
+            if key not in _RESERVED_LOG_RECORD_ATTRIBUTES:
+                payload[key] = value
 
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
