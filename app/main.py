@@ -58,7 +58,9 @@ app.add_middleware(
 
     allow_origins=[
         "https://library-data-retrieval-llm-chatbot.vercel.app",
-        "http://localhost:5500/frontend"
+        "http://localhost:5500/frontend",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
         ], 
     allow_credentials=True,
 
@@ -97,7 +99,6 @@ app.include_router(
 app.include_router(
     admin_router
 )
-
 
 
 

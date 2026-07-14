@@ -26,6 +26,9 @@ venv/
 dist/
 build/
 
+# JavaScript dependencies
+node_modules/
+
 # db files
 data/
 db_source/

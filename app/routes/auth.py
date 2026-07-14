@@ -200,7 +200,7 @@ async def google_callback(
     # back to the backend and the backend verifies the Google profile.
     return RedirectResponse(
         url=
-        f"{FRONTEND_URL}/oauth_success.html"
+        f"{FRONTEND_URL}/oauth-success"
         f"?access={access_token}"
         f"&refresh={refresh_token}"
     )

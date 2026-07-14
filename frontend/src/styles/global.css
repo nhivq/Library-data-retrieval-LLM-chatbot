@@ -1,0 +1,13 @@
+@import '../../auth.css';
+@import '../../chat.css';
+@import '../../admin.css';
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}

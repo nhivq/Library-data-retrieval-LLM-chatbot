@@ -1,6 +1,6 @@
 # OpenLibrary AI Book Retrieval Chatbot
 
-A full-stack book discovery app built on OpenLibrary data. The project combines a FastAPI backend, PostgreSQL, JWT authentication, a vanilla JavaScript frontend, OpenRouter-powered chat, FastMCP tools, and semantic book search with `sentence-transformers` + `pgvector`.
+A full-stack book discovery app built on OpenLibrary data. The project combines a FastAPI backend, PostgreSQL, JWT authentication, a React frontend, OpenRouter-powered chat, FastMCP tools, and semantic book search with `sentence-transformers` + `pgvector`.
 
 The chatbot can search books and authors, manage user bookmarks, remember conversation history, recommend books by mood/taste, and perform vector-based semantic search for conceptual queries such as "books about friendship after war".
 
@@ -29,7 +29,7 @@ The chatbot can search books and authors, manage user bookmarks, remember conver
 - LLM: OpenRouter through the OpenAI-compatible client
 - Tool layer: FastMCP
 - Semantic search: sentence-transformers, pgvector
-- Frontend: HTML, CSS, vanilla JavaScript
+- Frontend: React, Vite, CSS
 - Deployment target: Render backend, Vercel/static frontend
 
 ## Project Structure
@@ -46,11 +46,11 @@ app/
   services/             # SQL/business logic
 
 frontend/
-  index.html            # Login page
-  register.html         # Registration page
-  chat.html             # Main chat UI
-  admin.html            # Admin dashboard
-  *.js / *.css          # Vanilla frontend logic and styling
+  index.html            # Vite entry point
+  src/                  # React pages, components, API client, utilities
+  auth.css              # Existing auth styles reused by React
+  chat.css              # Existing chat styles reused by React
+  admin.css             # Existing admin styles reused by React
 
 scripts/
   pipeline/             # Main OpenLibrary import pipeline
@@ -87,7 +87,7 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URI=http://127.0.0.1:8000/auth/google/callback
 
-FRONTEND_URL=http://127.0.0.1:5500/frontend
+FRONTEND_URL=http://127.0.0.1:5173
 EMBEDDING_PROVIDER=openai
 EMBEDDING_MODEL_NAME=text-embedding-3-small
 EMBEDDING_DIMENSIONS=384
@@ -169,16 +169,18 @@ Open API docs:
 http://127.0.0.1:8000/docs
 ```
 
-Serve the frontend from the project root:
+Install and run the React frontend:
 
 ```bash
-python -m http.server 5500
+cd frontend
+npm install
+npm run dev
 ```
 
 Then open:
 
 ```text
-http://127.0.0.1:5500/frontend/index.html
+http://127.0.0.1:5173
 ```
 
 ## Data Import and Updates
@@ -364,14 +366,15 @@ The backend injects the authenticated `user_id` for tools that modify user data,
 
 ## Frontend
 
-The frontend is intentionally simple and framework-free.
+The frontend is a Vite React app in `frontend/src`.
 
-- `auth.js`: API base URL, token storage, refresh-token retry, auth guards.
-- `chat.js`: chat UI, SSE parsing, markdown rendering, welcome state.
-- `sidebar.js`: conversation history and bookmarks.
-- `admin.js`: analytics dashboard.
+- `src/api/client.js`: API base URL, token storage, refresh-token retry, auth helpers.
+- `src/pages/ChatPage.jsx`: chat UI, SSE parsing, conversation history, bookmarks.
+- `src/pages/AdminPage.jsx`: analytics dashboard.
+- `src/pages/LoginPage.jsx` and `src/pages/RegisterPage.jsx`: authentication forms.
 
-For local development, update `API_BASE` in `frontend/auth.js` if needed.
+For local development, set `VITE_API_BASE` if you want to call a backend other
+than the default Render URL.
 
 ## Deployment Notes
 
@@ -454,18 +457,24 @@ https://library-data-retrieval-llm-chatbot.vercel.app
 https://your-render-service.onrender.com/auth/google/callback
 ```
 
+After Google verifies the user, the backend redirects back to:
+
+```text
+{FRONTEND_URL}/oauth-success
+```
+
 Render must bind to `$PORT`; the configured start command above does this.
 
 ### Vercel Frontend
 
 The frontend is deployed as a static site on Vercel from the `frontend/` directory.
 
-The frontend calls the backend through `API_BASE` in `frontend/auth.js`.
+The frontend calls the backend through `VITE_API_BASE`, with a production fallback in `frontend/src/api/client.js`.
 
-For production, `API_BASE` should point to the Render backend URL:
+For production, set `VITE_API_BASE` to the Render backend URL:
 
-```js
-const API_BASE = "https://your-render-service.onrender.com";
+```text
+VITE_API_BASE=https://your-render-service.onrender.com
 ```
 
 The Render backend CORS settings in `app/main.py` must allow the Vercel origin:

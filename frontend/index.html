@@ -3,9 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login — QuynhNhiVu</title>
-    <link rel="icon" href="assets/favicon.png" type="image/png" />
-    <link rel="stylesheet" href="auth.css" />
+    <title>OpenLibrary AI Book Assistant</title>
+    <link rel="icon" href="/assets/favicon.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&display=swap"
@@ -13,79 +12,7 @@
     />
   </head>
   <body>
-    <div class="auth-page">
-      <div class="auth-card">
-        <!-- Brand -->
-        <div class="auth-brand">
-          <img class="auth-brand-icon" src="assets/favicon.png" alt="" />
-          <div class="auth-brand-name">QuynhNhiVu</div>
-          <div class="auth-brand-sub">Open Library AI Book Retrieval</div>
-        </div>
-
-        <div class="divider"></div>
-
-        <h1 class="auth-heading" style="margin-top: 20px">Welcome back</h1>
-
-        <!-- Alerts -->
-        <div class="alert alert-error" id="errorMsg"></div>
-        <div class="alert alert-success" id="successMsg"></div>
-
-        <!-- Form -->
-        <form class="auth-form" id="loginForm" novalidate>
-          <div class="field">
-            <label for="username">Username</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              placeholder="your username"
-              autocomplete="username"
-            />
-          </div>
-
-          <div class="field">
-            <label for="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="••••••••"
-              autocomplete="current-password"
-            />
-          </div>
-
-          <button type="submit" class="btn-primary" id="submitBtn">
-            Login
-          </button>
-
-          <!-- Google Login -->
-          <div class="oauth-divider">
-              OR
-          </div>
-
-
-          <button
-              id="googleLoginBtn"
-              class="google-btn"
-              type="button"
-          >
-              <img
-                class="google-icon"
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              >
-              Continue with Google
-          </button>
-        </form>
-
-        <p class="auth-footer">
-          Don't have an account? <a href="register.html">Register</a>
-        </p>
-      </div>
-    </div>
-
-    <script src="auth.js"></script>
-    <script>
-      initLogin();
-    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
