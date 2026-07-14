@@ -1,5 +1,5 @@
 from app.services import book_service
-from tests.conftest import FakeConnection, FakeCursor
+from app.tests.conftest import FakeConnection, FakeCursor
 
 
 def test_extract_recommendation_terms_removes_stop_words_and_duplicates():

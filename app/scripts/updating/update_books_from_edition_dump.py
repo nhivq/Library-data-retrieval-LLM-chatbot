@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.database.connection import get_connection
-from scripts.processing.clean_edition import clean_edition
+from app.scripts.processing.clean_edition import clean_edition
 
 
 DEFAULT_DUMP_FILE = PROJECT_ROOT / "db_source" / "ol_dump_editions_2026-05-31.txt.gz"

@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from app.core.dependencies import get_current_user
 from app.database.connection import get_db
 from app.main import app
-from tests.conftest import FakeConnection, FakeCursor
+from app.tests.conftest import FakeConnection, FakeCursor
 
 
 def test_bookmark_route_uses_dependency_overrides(sample_book):

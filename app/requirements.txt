@@ -1,0 +1,17 @@
+Authlib==1.7.2
+bcrypt==5.0.0
+email-validator==2.3.0
+fastapi==0.136.1
+fastmcp==3.3.1
+httpx==0.28.1
+openai==2.38.0
+psycopg2-binary==2.9.12
+pydantic==2.13.4
+pytest==9.1.1
+python-dotenv==1.2.2
+python-jose==3.5.0
+redis==5.2.1
+requests==2.34.2
+starlette==1.2.0
+tqdm==4.67.3
+uvicorn==0.47.0

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from scripts.processing.language_names import normalize_languages
+from app.scripts.processing.language_names import normalize_languages
 
 
 def get_cover(raw):

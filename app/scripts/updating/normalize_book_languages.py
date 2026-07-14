@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.database.connection import get_connection
-from scripts.processing.language_names import normalize_languages
+from app.scripts.processing.language_names import normalize_languages
 
 
 BATCH_SIZE = 1000

@@ -6,13 +6,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from scripts.pipeline.queries import QUERIES
-    from scripts.pipeline.ingest_books import run_pipeline
-    from scripts.pipeline.config import PAGE_SIZE
+    from app.scripts.pipeline.queries import QUERIES
+    from app.scripts.pipeline.ingest_books import run_pipeline
+    from app.scripts.pipeline.config import PAGE_SIZE
 except ModuleNotFoundError:
-    from queries import QUERIES
-    from ingest_books import run_pipeline
-    from config import PAGE_SIZE
+    from app.scripts.pipeline.queries import QUERIES
+    from app.scripts.pipeline.ingest_books import run_pipeline
+    from app.scripts.pipeline.config import PAGE_SIZE
 
 
 def run_import():

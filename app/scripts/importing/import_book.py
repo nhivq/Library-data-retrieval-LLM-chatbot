@@ -9,8 +9,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.database.connection import get_connection
-from scripts.importing.config import BATCH_SIZE, DRY_RUN
-from scripts.processing.language_names import normalize_languages
+from app.scripts.importing.config import BATCH_SIZE, DRY_RUN
+from app.scripts.processing.language_names import normalize_languages
 
 
 CLEAN_BOOK_FOLDER = f"{PROJECT_ROOT}/data/clean/works"

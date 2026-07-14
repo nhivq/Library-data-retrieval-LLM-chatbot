@@ -12,8 +12,8 @@ sys.path.insert(
 )
 
 from app.database.connection import get_connection
-from scripts.openlibrary.client import get
-from scripts.processing.clean_work import clean_work
+from app.scripts.openlibrary.client import get
+from app.scripts.processing.clean_work import clean_work
 
 
 BATCH_SIZE = 1000

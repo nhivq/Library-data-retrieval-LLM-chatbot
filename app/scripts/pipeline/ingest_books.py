@@ -4,16 +4,16 @@ import re
 import time
 from tqdm import tqdm
 
-from scripts.openlibrary.fetch_search import search_books
-from scripts.openlibrary.fetch_work import fetch_work
-from scripts.openlibrary.fetch_edition import fetch_editions
+from app.scripts.openlibrary.fetch_search import search_books
+from app.scripts.openlibrary.fetch_work import fetch_work
+from app.scripts.openlibrary.fetch_edition import fetch_editions
 
-from scripts.processing.clean_work import clean_work
-from scripts.processing.clean_edition import clean_edition
-from scripts.processing.merge_book import merge_book
+from app.scripts.processing.clean_work import clean_work
+from app.scripts.processing.clean_edition import clean_edition
+from app.scripts.processing.merge_book import merge_book
 
 try:
-    from scripts.pipeline.config import (
+    from app.scripts.pipeline.config import (
         DEFAULT_SEARCH_LIMIT,
         PROCESSED_KEYS_FILE,
         RAW_WORK_FOLDER,
@@ -21,7 +21,7 @@ try:
         STATE_FILE
     )
 except ModuleNotFoundError:
-    from config import (
+    from app.scripts.pipeline.config import (
         DEFAULT_SEARCH_LIMIT,
         PROCESSED_KEYS_FILE,
         RAW_WORK_FOLDER,

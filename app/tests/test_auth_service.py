@@ -1,7 +1,7 @@
 import pytest
 
 from app.services import auth_service
-from tests.conftest import FakeConnection, FakeCursor
+from app.tests.conftest import FakeConnection, FakeCursor
 
 
 def test_register_user_hashes_password_and_commits(monkeypatch):

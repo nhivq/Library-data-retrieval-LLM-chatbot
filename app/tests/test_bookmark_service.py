@@ -1,7 +1,7 @@
 import pytest
 
 from app.services import bookmark_service
-from tests.conftest import FakeConnection, FakeCursor
+from app.tests.conftest import FakeConnection, FakeCursor
 
 
 def test_save_bookmark_commits_insert():

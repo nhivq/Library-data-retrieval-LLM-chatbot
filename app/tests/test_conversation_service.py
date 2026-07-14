@@ -1,5 +1,5 @@
 from app.services import conversation_service
-from tests.conftest import FakeConnection, FakeCursor
+from app.tests.conftest import FakeConnection, FakeCursor
 
 
 def test_get_or_create_conversation_returns_existing_id_without_commit():

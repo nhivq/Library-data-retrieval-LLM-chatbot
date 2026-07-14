@@ -1,9 +1,9 @@
 # Search API layer to get candidates
 
 try:
-    from scripts.openlibrary.client import get
+    from app.scripts.openlibrary.client import get
 except ModuleNotFoundError:
-    from client import get
+    from app.scripts.openlibrary.client import get
 
 
 def search_books(

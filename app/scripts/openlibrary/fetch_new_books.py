@@ -1,4 +1,4 @@
-from fetch_work import fetch_work, save_work
+from app.scripts.openlibrary.fetch_work import fetch_work, save_work
 import requests
 import time
 

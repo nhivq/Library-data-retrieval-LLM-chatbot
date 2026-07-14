@@ -14,9 +14,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.database.connection import get_connection
-from scripts.importing.import_author import AUTHOR_FIELDS, normalize_fields
-from scripts.openlibrary.client import get
-from scripts.processing.clean_author import clean_author
+from app.scripts.importing.import_author import AUTHOR_FIELDS, normalize_fields
+from app.scripts.openlibrary.client import get
+from app.scripts.processing.clean_author import clean_author
 
 
 BATCH_SIZE = 1000
