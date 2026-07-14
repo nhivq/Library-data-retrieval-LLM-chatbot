@@ -128,10 +128,111 @@ function ActivityPanel({ steps = [] }) {
   );
 }
 
+function getWorkKeyFromText(value) {
+  const match = String(value || '').match(/\/works\/OL\d+[A-Z]\b|\bOL\d+[A-Z]\b/i);
+
+  if (!match) {
+    return null;
+  }
+
+  return match[0].startsWith('/works/') ? match[0] : `/works/${match[0]}`;
+}
+
+function isBookDetailLine(line) {
+  const trimmed = line.trim();
+
+  return (
+    !trimmed ||
+    /^[-*]\s+/.test(trimmed) ||
+    /^\s+/.test(line) ||
+    /author|rating|publish|openlibrary|work_key|view on/i.test(trimmed)
+  );
+}
+
+function buildAssistantSegments(text, bookCards = []) {
+  const cardsByWorkKey = new Map(
+    bookCards
+      .map((book) => [getWorkKeyFromText(book.work_key)?.toLowerCase(), book])
+      .filter(([workKey]) => Boolean(workKey))
+  );
+
+  if (!cardsByWorkKey.size) {
+    return [{ type: 'markdown', text }];
+  }
+
+  const lines = String(text || '').split('\n');
+  const segments = [];
+  let markdownLines = [];
+  let index = 0;
+
+  const flushMarkdown = () => {
+    const markdown = markdownLines.join('\n').trim();
+
+    if (markdown) {
+      segments.push({ type: 'markdown', text: markdown });
+    }
+
+    markdownLines = [];
+  };
+
+  while (index < lines.length) {
+    const line = lines[index];
+
+    if (/^\s*\d+\.\s+/.test(line)) {
+      const block = [line];
+      index += 1;
+
+      while (index < lines.length && !/^\s*\d+\.\s+/.test(lines[index])) {
+        const nextLine = lines[index];
+        const followingText = lines.slice(index + 1).find((candidate) => candidate.trim());
+
+        if (
+          !nextLine.trim() &&
+          followingText &&
+          !/^\s*\d+\.\s+/.test(followingText) &&
+          !isBookDetailLine(followingText)
+        ) {
+          break;
+        }
+
+        if (nextLine.trim() && !isBookDetailLine(nextLine)) {
+          break;
+        }
+
+        block.push(nextLine);
+        index += 1;
+      }
+
+      const blockText = block.join('\n');
+      const workKey = getWorkKeyFromText(blockText)?.toLowerCase();
+      const book = workKey ? cardsByWorkKey.get(workKey) : null;
+
+      if (book) {
+        flushMarkdown();
+        segments.push({ type: 'book', book });
+      } else {
+        markdownLines.push(...block);
+      }
+
+      continue;
+    }
+
+    markdownLines.push(line);
+    index += 1;
+  }
+
+  flushMarkdown();
+  return segments.length ? segments : [{ type: 'markdown', text }];
+}
+
 function ChatMessage({ message, onEdit, onAskSimilar, onTagSearch, onBookmarkSaved }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content || message.text || '');
   const text = message.content ?? message.text ?? '';
+  const assistantSegments = useMemo(
+    () => buildAssistantSegments(text, message.bookCards || []),
+    [text, message.bookCards]
+  );
 
   useEffect(() => {
     setDraft(text);
@@ -188,15 +289,22 @@ function ChatMessage({ message, onEdit, onAskSimilar, onTagSearch, onBookmarkSav
           text
         ) : (
           <>
-            <div className="markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }} />
-            {(message.bookCards || []).map((book) => (
-              <BookCard
-                book={book}
-                key={book.work_key || book.title}
-                onAskSimilar={onAskSimilar}
-                onTagSearch={onTagSearch}
-                onBookmarkSaved={onBookmarkSaved}
-              />
+            {assistantSegments.map((segment, index) => (
+              segment.type === 'book' ? (
+                <BookCard
+                  book={segment.book}
+                  key={`${segment.book.work_key || segment.book.title}-${index}`}
+                  onAskSimilar={onAskSimilar}
+                  onTagSearch={onTagSearch}
+                  onBookmarkSaved={onBookmarkSaved}
+                />
+              ) : (
+                <div
+                  className="markdown"
+                  key={`markdown-${index}`}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(segment.text) }}
+                />
+              )
             ))}
             <ActivityPanel steps={message.progress || []} />
           </>
@@ -387,8 +495,11 @@ export default function ChatPage() {
 
   async function extractBookCards(answer) {
     const html = renderMarkdown(answer);
-    const matches = [...html.matchAll(/href="([^"]*openlibrary\.org\/works\/[^"]+)"/g)];
-    const workKeys = [...new Set(matches.map((match) => getWorkKeyFromOpenLibraryUrl(match[1])).filter(Boolean))];
+    const matches = [
+      ...html.matchAll(/href="([^"]*openlibrary\.org\/works\/[^"]+)"/g),
+      ...String(answer || '').matchAll(/(\/works\/OL\d+[A-Z]\b|\bOL\d+[A-Z]\b)/gi),
+    ];
+    const workKeys = [...new Set(matches.map((match) => getWorkKeyFromOpenLibraryUrl(match[1]) || getWorkKeyFromText(match[1])).filter(Boolean))];
     const results = await Promise.allSettled(workKeys.map((workKey) => fetchBookDetails(workKey)));
     return results.map((result) => result.status === 'fulfilled' ? result.value : null).filter(Boolean);
   }

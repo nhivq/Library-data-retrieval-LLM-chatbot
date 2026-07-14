@@ -1,11 +1,12 @@
 import { routeTo } from '../api/client.js';
+import { faviconUrl } from '../assets.js';
 
 export default function AuthCard({ title, children, footer }) {
   return (
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-brand">
-          <img className="auth-brand-icon" src="/assets/favicon.png" alt="" />
+          <img className="auth-brand-icon" src={faviconUrl} alt="" />
           <div className="auth-brand-name">QuynhNhiVu</div>
           <div className="auth-brand-sub">Open Library AI Book Retrieval</div>
         </div>

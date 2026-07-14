@@ -892,41 +892,56 @@ html, body {
 }
 
 /* ── Markdown rendering inside AI bubbles ────────────────── */
-.msg-bubble.markdown { white-space: normal; }
+.msg-bubble.markdown,
+.msg-bubble .markdown { white-space: normal; }
 
-.msg-bubble.markdown p          { margin: 0 0 8px; }
-.msg-bubble.markdown p:last-child { margin-bottom: 0; }
+.msg-bubble.markdown p,
+.msg-bubble .markdown p          { margin: 0 0 8px; }
+.msg-bubble.markdown p:last-child,
+.msg-bubble .markdown p:last-child { margin-bottom: 0; }
 
 .msg-bubble.markdown h1,
 .msg-bubble.markdown h2,
-.msg-bubble.markdown h3 {
+.msg-bubble.markdown h3,
+.msg-bubble .markdown h1,
+.msg-bubble .markdown h2,
+.msg-bubble .markdown h3 {
   font-family: var(--font-serif);
   font-weight: 600;
   color: var(--text);
   margin: 12px 0 6px;
   line-height: 1.3;
 }
-.msg-bubble.markdown h1 { font-size: 16px; }
-.msg-bubble.markdown h2 { font-size: 15px; }
-.msg-bubble.markdown h3 { font-size: 14px; }
+.msg-bubble.markdown h1,
+.msg-bubble .markdown h1 { font-size: 16px; }
+.msg-bubble.markdown h2,
+.msg-bubble .markdown h2 { font-size: 15px; }
+.msg-bubble.markdown h3,
+.msg-bubble .markdown h3 { font-size: 14px; }
 
 .msg-bubble.markdown ul,
-.msg-bubble.markdown ol {
+.msg-bubble.markdown ol,
+.msg-bubble .markdown ul,
+.msg-bubble .markdown ol {
   padding-left: 1.2em;
   margin: 6px 0 8px;
   list-style-position: outside;
 }
-.msg-bubble.markdown li {
+.msg-bubble.markdown li,
+.msg-bubble .markdown li {
   font-size: 14px;
   line-height: 1.55;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-.msg-bubble.markdown strong { font-weight: 600; color: var(--text); }
-.msg-bubble.markdown em     { font-style: italic; }
+.msg-bubble.markdown strong,
+.msg-bubble .markdown strong { font-weight: 600; color: var(--text); }
+.msg-bubble.markdown em,
+.msg-bubble .markdown em     { font-style: italic; }
 
-.msg-bubble.markdown code {
+.msg-bubble.markdown code,
+.msg-bubble .markdown code {
   font-family: var(--font-mono);
   font-size: 12.5px;
   background: #f5c0d840;
@@ -935,7 +950,8 @@ html, body {
   padding: 1px 5px;
 }
 
-.msg-bubble.markdown pre {
+.msg-bubble.markdown pre,
+.msg-bubble .markdown pre {
   background: #2d0f1e10;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -943,7 +959,8 @@ html, body {
   overflow-x: auto;
   margin: 8px 0;
 }
-.msg-bubble.markdown pre code {
+.msg-bubble.markdown pre code,
+.msg-bubble .markdown pre code {
   background: none;
   border: none;
   padding: 0;
@@ -951,7 +968,8 @@ html, body {
   color: var(--text);
 }
 
-.msg-bubble.markdown hr {
+.msg-bubble.markdown hr,
+.msg-bubble .markdown hr {
   border: none;
   border-top: 1px solid var(--border);
   margin: 10px 0;

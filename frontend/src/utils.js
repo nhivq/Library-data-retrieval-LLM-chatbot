@@ -147,16 +147,16 @@ export function renderMarkdown(text) {
       continue;
     }
 
+    if (ordered.length) {
+      ordered[ordered.length - 1] += `<br>${line}`;
+      continue;
+    }
+
     const unorderedMatch = line.match(/^[-*]\s+(.*)$/);
     if (unorderedMatch) {
       flushParagraph();
       flushOrdered();
       unordered.push(unorderedMatch[1]);
-      continue;
-    }
-
-    if (ordered.length) {
-      ordered[ordered.length - 1] += `<br>${line}`;
       continue;
     }
 

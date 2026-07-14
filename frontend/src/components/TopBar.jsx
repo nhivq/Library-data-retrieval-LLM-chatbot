@@ -1,10 +1,11 @@
 import { logout, routeTo } from '../api/client.js';
+import { faviconUrl } from '../assets.js';
 
 export default function TopBar({ title = 'QuynhNhiVu', subtitle, showAdminLink, chatLink }) {
   return (
     <header className="topbar">
       <div className="brand">
-        <img className="brand-icon" src="/assets/favicon.png" alt="" />
+        <img className="brand-icon" src={faviconUrl} alt="" />
         <span className="brand-name">{title}</span>
       </div>
       {subtitle && <span className="brand-sub">{subtitle}</span>}
