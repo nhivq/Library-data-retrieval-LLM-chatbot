@@ -1,5 +1,11 @@
 from psycopg2.extras import RealDictCursor
 
+from app.core.cache import get_json, set_json
+
+
+ADMIN_ANALYTICS_CACHE_KEY = "admin:analytics:v1"
+ADMIN_ANALYTICS_CACHE_TTL_SECONDS = 60 * 5
+
 
 def _table_exists(cursor, table_name: str) -> bool:
     """Check whether an optional table exists before querying it."""
@@ -234,6 +240,13 @@ def _get_recent_books(cursor) -> list[dict]:
 def get_dashboard_analytics(conn=None) -> dict:
     """Build the admin dashboard analytics payload."""
 
+    cached_dashboard = get_json(
+        ADMIN_ANALYTICS_CACHE_KEY
+    )
+
+    if cached_dashboard is not None:
+        return cached_dashboard
+
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     try:
@@ -247,13 +260,21 @@ def get_dashboard_analytics(conn=None) -> dict:
             "conversations": _count_table(cursor, "conversations")
         }
 
-        return {
+        dashboard = {
             "totals": totals,
             "data_quality": _get_data_quality(cursor),
             "top_authors": _get_top_authors(cursor),
             "top_tags": _get_top_tags(cursor),
             "recent_books": _get_recent_books(cursor)
         }
+
+        set_json(
+            ADMIN_ANALYTICS_CACHE_KEY,
+            dashboard,
+            ttl_seconds=ADMIN_ANALYTICS_CACHE_TTL_SECONDS
+        )
+
+        return dashboard
 
     finally:
 
