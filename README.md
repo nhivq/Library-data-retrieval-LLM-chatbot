@@ -1,99 +1,113 @@
 # OpenLibrary AI Book Retrieval Chatbot
 
-A full-stack book discovery app built on OpenLibrary data. The project combines a FastAPI backend, PostgreSQL, JWT authentication, a React frontend, OpenRouter-powered chat, FastMCP tools, and semantic book search with `sentence-transformers` + `pgvector`.
+A full-stack book discovery application built from OpenLibrary data. Users can search books and authors, ask an AI assistant for recommendations, save bookmarks, and continue previous conversations.
 
-The chatbot can search books and authors, manage user bookmarks, remember conversation history, recommend books by mood/taste, and perform vector-based semantic search for conceptual queries such as "books about friendship after war".
+The application consists of a FastAPI backend, PostgreSQL with pgvector, optional Redis caching, an OpenRouter-powered LLM with FastMCP tools, and a React/Vite frontend.
+
+See the [project documentation](docs/README.md) for focused setup, architecture, API, data/search, and operations guides.
 
 ## Features
 
-- Book search by title, author, tag, rating, and publication year.
-- Author search and author detail lookup.
-- Book details and similar-book recommendations.
-- User registration, login, JWT refresh tokens, and Google OAuth.
-- Authenticated bookmarks.
-- Streaming AI chat over Server-Sent Events.
-- Conversation history with readable titles and delete support.
-- Admin analytics dashboard for data quality and collection stats.
-- LLM tool calling through FastMCP.
-- Recommendation search using concept-group ranking.
-- Semantic vector search using Sentence Transformers and pgvector.
-- Hybrid book search using PostgreSQL full-text ranking plus semantic vector similarity.
-- Data import/update scripts for OpenLibrary works, editions, authors, languages, and Wikidata enrichment.
+- Metadata search by title, author, tag, rating, and publication year
+- Concept-aware recommendations and similar-book discovery
+- Semantic search with OpenAI or local Sentence Transformers embeddings
+- Hybrid search combining PostgreSQL full-text search and vector similarity
+- User registration, JWT access/refresh tokens, and Google OAuth
+- Authenticated bookmarks
+- Streaming chat responses over Server-Sent Events
+- Conversation history and deletion
+- Admin analytics for collection and data quality statistics
+- OpenLibrary import, processing, and update scripts
 
-## Tech Stack
-
-- Backend: FastAPI, Starlette, Pydantic
-- Database: PostgreSQL, psycopg2, raw SQL
-- Cache: Redis for optional read-through caching
-- Auth: JWT, bcrypt, Google OAuth via Authlib
-- LLM: OpenRouter through the OpenAI-compatible client
-- Tool layer: FastMCP
-- Semantic search: sentence-transformers, pgvector
-- Frontend: React, Vite, CSS
-- Deployment target: Render backend, Vercel/static frontend
-
-## Project Structure
+## Architecture
 
 ```text
-app/
-  core/                 # Config, auth dependencies, JWT helpers
-  database/             # PostgreSQL connection and schema
-  llm/                  # OpenRouter client, streaming agent, prompts, tool processing
-  mcp_integration/      # FastMCP tool server used by the LLM
-  routes/               # FastAPI routers
-  schemas/              # Pydantic request/response models
-  semantic/             # Embedding model helpers
-  services/             # SQL/business logic
-
-frontend/
-  index.html            # Vite entry point
-  src/                  # React pages, components, API client, utilities
-  auth.css              # Existing auth styles reused by React
-  chat.css              # Existing chat styles reused by React
-  admin.css             # Existing admin styles reused by React
-
-scripts/
-  pipeline/             # Main OpenLibrary import pipeline
-  importing/            # Import helpers
-  processing/           # Cleaning/normalization helpers
-  updating/             # Update/backfill scripts
-  migrations/           # SQL migrations
-  validation/           # Data validation scripts
+React + Vite frontend
+          |
+          | HTTP, JWT, SSE
+          v
+FastAPI backend ---- OpenRouter / OpenAI
+          |
+          +---- PostgreSQL + pgvector
+          +---- Redis cache
+          +---- FastMCP tools
 ```
 
-## Environment Variables
+## Technology
 
-Create a local `.env` file:
+- Python 3.12
+- FastAPI, Starlette, Pydantic, Uvicorn
+- PostgreSQL and psycopg2
+- pgvector for semantic search
+- Redis for optional read-through caching
+- OpenRouter through the OpenAI-compatible client
+- FastMCP for LLM tool execution
+- React 18 and Vite 6
+- Neon, Render, and Vercel are supported deployment targets
+
+## Repository Layout
+
+```text
+.
+├── backend/
+│   ├── app/
+│   │   ├── core/                 Configuration, security, cache, logging
+│   │   ├── database/             PostgreSQL connection and base schema
+│   │   ├── llm/                  OpenRouter client, prompts, tool handling
+│   │   ├── mcp_integration/      FastMCP server and client
+│   │   ├── routes/               API routers
+│   │   ├── schemas/              Pydantic models
+│   │   ├── scripts/              OpenLibrary import and update jobs
+│   │   ├── semantic/             Embedding helpers
+│   │   ├── services/             Database and business logic
+│   │   └── tests/                Pytest unit and route tests
+│   └── requirements.txt
+├── frontend/
+│   ├── src/                      React pages, components, and API client
+│   ├── package.json
+│   └── vercel.json               SPA rewrite configuration
+├── data/                         Local OpenLibrary data (ignored by Git)
+├── db_source/                    Large source dumps (ignored by Git)
+├── docker-compose.yml            Backend, PostgreSQL, and Redis services
+├── Dockerfile                    Backend image definition
+└── requirements.txt              Root Python dependency file
+```
+
+`app/main.py` is a compatibility entry point for hosts that run `uvicorn app.main:app`. The application implementation is in `backend/app/main.py`.
+
+## Configuration
+
+Create a local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Recommended variables:
+Set the values required by the services you use:
 
 ```env
-DATABASE_URL=postgresql://book_user:123456@localhost:5432/book_db
-REDIS_URL=redis://localhost:6379/0
-CACHE_ENABLED=true
-CACHE_DEBUG=false
-
-JWT_SECRET_KEY=change_me
-SESSION_SECRET_KEY=change_me
-
 OPENROUTER_API_KEY=your_openrouter_api_key
-OPENAI_API_KEY=your_openai_api_key
+DATABASE_URL=postgresql://book_user:123456@localhost:5432/book_db
 
+JWT_SECRET_KEY=replace_with_a_long_random_value
+SESSION_SECRET_KEY=replace_with_a_long_random_value
+
+FRONTEND_URL=http://127.0.0.1:5173
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URI=http://127.0.0.1:8000/auth/google/callback
 
-FRONTEND_URL=http://127.0.0.1:5173
+REDIS_URL=redis://localhost:6379/0
+CACHE_ENABLED=true
+CACHE_DEBUG=false
+
 EMBEDDING_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key
 EMBEDDING_MODEL_NAME=text-embedding-3-small
 EMBEDDING_DIMENSIONS=384
 ```
 
-If `DATABASE_URL` is not set, the app falls back to:
+`DATABASE_URL` takes precedence over the individual `POSTGRES_*` settings. If it is not set, the database connection uses these defaults:
 
 ```env
 POSTGRES_DB=book_db
@@ -103,73 +117,49 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 ```
 
-Redis is optional. If `REDIS_URL` is unset or Redis is unavailable, the API
-continues to use PostgreSQL/OpenAI directly. Set `CACHE_ENABLED=false` to turn
-off caching without changing the rest of the configuration. Set
-`CACHE_DEBUG=true` temporarily to show cache hit/miss diagnostics in backend
-logs.
+Redis is optional. If it is unavailable, the API continues without the cache. Set `CACHE_ENABLED=false` to disable it explicitly.
 
-## Local Setup
+## Local Development
 
-Create and activate a virtual environment:
+### 1. Install backend dependencies
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
 ```
 
-Start Redis locally if you want cache support during development:
+### 2. Prepare PostgreSQL
 
-```bash
-redis-server
-```
-
-If you want to use local embeddings instead of OpenAI embeddings during development, install the optional local model dependency:
-
-```bash
-pip install sentence-transformers
-```
-
-Create the database:
+PostgreSQL must have the pgvector extension available for semantic search. Create the database and apply the base schema:
 
 ```bash
 createdb book_db
+psql "$DATABASE_URL" -f backend/app/database/schema.sql
 ```
 
-Apply the base schema:
+Apply migrations required by the features you enable:
 
 ```bash
-psql "$DATABASE_URL" -f app/database/schema.sql
+psql "$DATABASE_URL" -f backend/scripts/migrations/add_user_roles_and_oauth_columns.sql
+psql "$DATABASE_URL" -f backend/scripts/migrations/add_conversation_indexes.sql
+psql "$DATABASE_URL" -f backend/scripts/migrations/add_book_embeddings.sql
+psql "$DATABASE_URL" -f backend/scripts/migrations/add_book_search_vector.sql
 ```
 
-Apply optional migrations as needed:
+### 3. Run the backend
+
+From the repository root:
 
 ```bash
-psql "$DATABASE_URL" -f scripts/migrations/add_user_roles_and_oauth_columns.sql
-psql "$DATABASE_URL" -f scripts/migrations/add_conversation_indexes.sql
-psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
-psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
+uvicorn backend.app.main:app --reload
 ```
 
-Run the backend:
+The API and interactive documentation are available at `http://127.0.0.1:8000` and `http://127.0.0.1:8000/docs`.
 
-```bash
-uvicorn app.main:app --reload
-```
+### 4. Run the frontend
 
-Open API docs:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Install and run the React frontend:
+In a second terminal:
 
 ```bash
 cd frontend
@@ -177,112 +167,65 @@ npm install
 npm run dev
 ```
 
-Then open:
-
-```text
-http://127.0.0.1:5173
-```
-
-## Data Import and Updates
-
-The project includes scripts for importing and enriching OpenLibrary data.
-
-Main import entry point:
+The frontend runs at `http://127.0.0.1:5173`. Set `VITE_API_BASE` when using a backend at a different address:
 
 ```bash
-python scripts/pipeline/run_import.py
+VITE_API_BASE=http://127.0.0.1:8000 npm run dev
 ```
 
-Useful update scripts:
+### Docker Compose
+
+Docker Compose starts the backend, PostgreSQL with pgvector, and Redis:
 
 ```bash
-python scripts/updating/update_existing_books.py
-python scripts/updating/update_existing_authors.py
-python scripts/updating/update_books_from_edition_dump.py
-python scripts/updating/update_authors_from_wikidata_dump.py
-python scripts/updating/normalize_book_languages.py
+cp .env.example .env
+docker compose up --build
 ```
 
-Data validation:
+The API is exposed on port `8000` and Redis on port `6379`. The PostgreSQL data is stored in the `postgres_data` named volume. The frontend is still run separately with the Vite commands above.
+
+## Data Import and Maintenance
+
+The main OpenLibrary import pipeline is located in `backend/app/scripts`:
 
 ```bash
-python scripts/validation/validate_books.py
-python scripts/validation/validate_authors.py
+python -m backend.app.scripts.pipeline.run_import
 ```
 
-Some update scripts scan large OpenLibrary dump files in `db_source/`, so they can take a long time.
-
-## Semantic and Hybrid Search Setup
-
-Semantic search uses:
-
-- OpenAI embeddings in production when `EMBEDDING_PROVIDER=openai`
-- optional local `sentence-transformers/all-MiniLM-L6-v2` embeddings when `EMBEDDING_PROVIDER=local`
-- 384-dimensional embeddings
-- PostgreSQL `pgvector`
-- cosine similarity with `<=>`
-
-Hybrid search combines semantic similarity with PostgreSQL full-text search:
-
-- `tsvector` search data stored on each book
-- a GIN index for keyword relevance
-- `ts_rank` keyword scores
-- weighted ranking from keyword and semantic scores
-
-Apply the pgvector migration:
+Available update jobs include:
 
 ```bash
-psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
+python -m backend.app.scripts.updating.update_existing_books
+python -m backend.app.scripts.updating.update_existing_authors
+python -m backend.app.scripts.updating.update_books_from_edition_dump
+python -m backend.app.scripts.updating.update_authors_from_wikidata_dump
+python -m backend.app.scripts.updating.normalize_book_languages
 ```
 
-Apply the full-text search migration:
+These jobs may require OpenLibrary data in `data/` or large dump files in `db_source/` and can take a long time. Run them as controlled maintenance jobs rather than during web requests.
+
+## Semantic and Hybrid Search
+
+Semantic search supports:
+
+- `openai` using `text-embedding-3-small`
+- `local` using `sentence-transformers/all-MiniLM-L6-v2`
+
+For local embeddings, install the optional dependency:
 
 ```bash
-psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
+pip install sentence-transformers
 ```
 
-Backfill embeddings:
+The configured embedding dimension must match the PostgreSQL vector column. The current default is `384`.
+
+After applying `add_book_embeddings.sql`, backfill embeddings in small batches:
 
 ```bash
-python scripts/updating/backfill_book_embeddings.py --limit 100
+python -m backend.app.scripts.updating.backfill_book_embeddings --limit 100
 ```
 
-On Render, set these environment variables before using semantic or hybrid search:
-
-```env
-OPENAI_API_KEY=your_openai_api_key
-EMBEDDING_PROVIDER=openai
-EMBEDDING_MODEL_NAME=text-embedding-3-small
-EMBEDDING_DIMENSIONS=384
-```
-
-The `384` dimension setting matches the existing `embedding vector(384)` database column.
-
-Remove `--limit` when ready to embed the full dataset:
-
-```bash
-python scripts/updating/backfill_book_embeddings.py
-```
-
-Test semantic search:
-
-```http
-GET /books/semantic-search?query=books about friendship after war
-```
-
-The semantic text for each book is built from title, description, authors, tags, languages, and publishers.
-
-Test hybrid search:
-
-```http
-GET /books/hybrid-search?query=books about friendship after war&limit=5
-```
-
-Tune keyword and semantic weights:
-
-```http
-GET /books/hybrid-search?query=war history&keyword_weight=0.7&semantic_weight=0.3
-```
+Remove `--limit` only after validating the process against the complete dataset. Semantic search requires embeddings to be populated. Hybrid search additionally requires `add_book_search_vector.sql`.
 
 ## API Overview
 
@@ -303,6 +246,7 @@ Books:
 GET /books/
 GET /books/search
 GET /books/recommendations
+GET /books/top-rated-by-tag
 GET /books/semantic-search
 GET /books/hybrid-search
 GET /books/{work_key}
@@ -317,17 +261,13 @@ GET /authors/search
 GET /authors/{author_key}
 ```
 
-Bookmarks:
+Bookmarks and conversations:
 
 ```text
 GET    /bookmarks/
 POST   /bookmarks/
 DELETE /bookmarks/{work_key}
-```
 
-Chat and conversations:
-
-```text
 POST   /chat
 GET    /conversations/
 GET    /conversations/{session_id}
@@ -335,161 +275,38 @@ DELETE /conversations/
 DELETE /conversations/{session_id}
 ```
 
-Admin:
+Administration:
 
 ```text
 GET /admin/analytics
 ```
 
-Admin routes require a user with `role = 'admin'`.
+Admin endpoints require an authenticated user whose role is `admin`. The `POST /chat` response is streamed as SSE events.
 
-## LLM Tooling
+## LLM Tools
 
-The chat endpoint streams responses from the LLM and allows tool use through FastMCP. Current tools include:
+The chat agent uses an in-process FastMCP server. Tools cover book and author search, recommendations, semantic and hybrid search, book details, similar books, bookmark management, conversation deletion, registration, and login.
 
-- `search_books`
-- `recommend_books`
-- `semantic_search_books`
-- `hybrid_search_books`
-- `get_book`
-- `similar_books`
-- `search_authors`
-- `get_author`
-- `save_bookmarks`
-- `get_bookmarks`
-- `delete_bookmarks`
-- `delete_all_conversations`
-- `register`
-- `login`
+The backend supplies the authenticated user ID to user-specific tools instead of allowing the model to choose the account being modified.
 
-The backend injects the authenticated `user_id` for tools that modify user data, so the model does not decide which user's bookmarks or conversations to access.
+## Testing
 
-## Frontend
-
-The frontend is a Vite React app in `frontend/src`.
-
-- `src/api/client.js`: API base URL, token storage, refresh-token retry, auth helpers.
-- `src/pages/ChatPage.jsx`: chat UI, SSE parsing, conversation history, bookmarks.
-- `src/pages/AdminPage.jsx`: analytics dashboard.
-- `src/pages/LoginPage.jsx` and `src/pages/RegisterPage.jsx`: authentication forms.
-
-For local development, set `VITE_API_BASE` if you want to call a backend other
-than the default Render URL.
-
-## Deployment Notes
-
-This project is deployed as three separate pieces:
-
-- Frontend: Vercel
-- Backend API: Render
-- PostgreSQL database: Neon
-
-### Neon PostgreSQL
-
-Create a Neon PostgreSQL project and copy the pooled or direct connection string.
-
-Use it as the backend `DATABASE_URL`:
-
-```env
-DATABASE_URL=postgresql://...
-```
-
-Apply the schema and migrations against the Neon database:
+Run the backend test suite from the repository root:
 
 ```bash
-psql "$DATABASE_URL" -f app/database/schema.sql
-psql "$DATABASE_URL" -f scripts/migrations/add_user_roles_and_oauth_columns.sql
-psql "$DATABASE_URL" -f scripts/migrations/add_conversation_indexes.sql
-psql "$DATABASE_URL" -f scripts/migrations/add_book_embeddings.sql
-psql "$DATABASE_URL" -f scripts/migrations/add_book_search_vector.sql
+pytest backend/app/tests
 ```
 
-If semantic search is enabled, run the embedding backfill against Neon:
+The tests use database fakes for service behavior and do not require a running PostgreSQL or Redis instance.
 
-```bash
-python scripts/updating/backfill_book_embeddings.py
-```
+## Deployment
 
-### Render Backend
+- Build the backend from the repository root with `pip install -r requirements.txt`.
+- Start the backend with `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`.
+- Deploy the `frontend/` directory as a Vercel static site.
+- Set the frontend `VITE_API_BASE` to the deployed backend URL.
+- Set the backend `FRONTEND_URL` to the deployed frontend origin and configure matching CORS and Google OAuth redirect URLs.
+- Use a PostgreSQL provider with pgvector support, such as Neon, for semantic and hybrid search.
+- Use `EMBEDDING_PROVIDER=openai` in memory-constrained web services unless local embeddings are explicitly configured.
 
-The FastAPI backend runs on Render.
-
-Build command:
-
-```bash
-pip install -r requirements.txt
-```
-
-Start command:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-Required Render environment variables:
-
-```text
-DATABASE_URL
-JWT_SECRET_KEY
-SESSION_SECRET_KEY
-OPENROUTER_API_KEY
-OPENAI_API_KEY
-FRONTEND_URL
-GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI
-EMBEDDING_PROVIDER
-EMBEDDING_MODEL_NAME
-EMBEDDING_DIMENSIONS
-```
-
-`DATABASE_URL` should point to the Neon PostgreSQL database.
-
-`FRONTEND_URL` should point to the Vercel frontend URL, for example:
-
-```text
-https://library-data-retrieval-llm-chatbot.vercel.app
-```
-
-`GOOGLE_REDIRECT_URI` should point to the Render backend callback URL:
-
-```text
-https://your-render-service.onrender.com/auth/google/callback
-```
-
-After Google verifies the user, the backend redirects back to:
-
-```text
-{FRONTEND_URL}/oauth-success
-```
-
-Render must bind to `$PORT`; the configured start command above does this.
-
-### Vercel Frontend
-
-The frontend is deployed as a static site on Vercel from the `frontend/` directory.
-
-The frontend calls the backend through `VITE_API_BASE`, with a production fallback in `frontend/src/api/client.js`.
-
-For production, set `VITE_API_BASE` to the Render backend URL:
-
-```text
-VITE_API_BASE=https://your-render-service.onrender.com
-```
-
-The Render backend CORS settings in `app/main.py` must allow the Vercel origin:
-
-```text
-https://library-data-retrieval-llm-chatbot.vercel.app
-```
-
-After changing MCP tools, prompts, or dependencies, restart/redeploy the backend so the LLM sees the new tool schema.
-
-## Notes and Limitations
-
-- The current recommendation endpoint is concept-aware but still SQL-based.
-- True semantic search requires embeddings to be backfilled before `/books/semantic-search` returns results.
-- Hybrid search requires the full-text search migration and works best after embeddings are backfilled.
-- On Render, use `EMBEDDING_PROVIDER=openai` to avoid loading `sentence-transformers` in web-service memory.
-- With `EMBEDDING_PROVIDER=local`, install `sentence-transformers` manually. It downloads the embedding model on first use, so first startup/search can be slower and memory usage is higher.
-- Large embedding backfills should be run as a controlled background/admin task, not during normal web requests.
+Never commit `.env`, API keys, OAuth secrets, or database credentials.
